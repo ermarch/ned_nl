@@ -1,25 +1,34 @@
+from __future__ import annotations
+
 import httpx
-from datetime import datetime
-from .const import BASE_URL, PRICE_ENDPOINT
 
-class NedAPI:
-    """Fetch electricity price data from NED API v1."""
+BASE_URL = "https://api.ned.nl/v1"
 
-    def __init__(self, api_key: str):
-        self.endpoint = PRICE_ENDPOINT
-        self.api_key = api_key
-        self._client = httpx.AsyncClient(timeout=30)
 
-    async def fetch_price(self):
-        url = f"{BASE_URL}/{self.endpoint}"
-        headers = {"X-API-Key": self.api_key}
+class NedApi:
+    """Async client for NED API."""
 
-        r = await self._client.get(url, headers=headers)
-        r.raise_for_status()
+    def __init__(self, api_key: str) -> None:
+        self._api_key = api_key
 
-        payload = r.json()
-        return {
-            "endpoint": self.endpoint,
-            "fetched_at": datetime.utcnow().isoformat(),
-            "data": payload,
+    async def async_get_prices(self) -> list[dict]:
+        """Fetch electricity prices."""
+        url = f"{BASE_URL}/utilizations"
+
+        headers = {
+            "X-AUTH-TOKEN": self._api_key,
+            "accept": "application/json",
         }
+
+        params = {
+            "point": "APX",
+            "type": "price",
+        }
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+        # Extract hourly data
+        return data.get("data", [])
