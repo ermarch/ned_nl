@@ -1,27 +1,59 @@
-from datetime import timedelta
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from __future__ import annotations
+
+import logging
+from datetime import timedelta, datetime
+
 from homeassistant.core import HomeAssistant
-from .api import NedAPI
-from .const import DEFAULT_SCAN_INTERVAL, MAX_DAYS
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from .api import NedApi
+from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
+
+MAX_HISTORY_DAYS = 7
+
 
 class NedCoordinator(DataUpdateCoordinator):
-    """Manages fetching NED electricity price data and 7-day history."""
+    """Coordinator to manage NED electricity price data."""
 
-    def __init__(self, hass: HomeAssistant, api_key: str, scan_interval: int = DEFAULT_SCAN_INTERVAL):
-        self.api = NedAPI(api_key)
-        self.history = []  # list of daily datasets
+    def __init__(self, hass: HomeAssistant, api_key: str, scan_interval: int):
+        self.hass = hass
+        self.api = NedApi(api_key)
+
+        # Rolling buffer with last 7 days
+        self.history: list[dict] = []
+
         super().__init__(
             hass,
-            logger=hass.logger,
-            name="NED Electricity Price",
+            _LOGGER,
+            name=DOMAIN,
             update_interval=timedelta(seconds=scan_interval),
         )
 
     async def _async_update_data(self):
-        data = await self.api.fetch_price()
+        """Fetch data from NED API."""
+        try:
+            data = await self.api.async_get_prices()
 
-        self.history.append(data)
-        if len(self.history) > MAX_DAYS:
-            self.history = self.history[-MAX_DAYS:]
+            if data is None:
+                raise UpdateFailed("No data received from NED API")
 
-        return data
+            today = datetime.now().date().isoformat()
+
+            # Avoid duplicate day entries
+            if not any(day["date"] == today for day in self.history):
+                self.history.append(
+                    {
+                        "date": today,
+                        "data": data,
+                    }
+                )
+
+                # Keep only last 7 days
+                self.history = self.history[-MAX_HISTORY_DAYS:]
+
+            return self.history
+
+        except Exception as err:
+            raise UpdateFailed(f"Error fetching NED data: {err}") from err
