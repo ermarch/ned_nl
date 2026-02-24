@@ -1,78 +1,68 @@
 from __future__ import annotations
 
-from datetime import datetime
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.const import UnitOfEnergy
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.const import CURRENCY_EURO
 
-from .const import DOMAIN
+from .const import DOMAIN, COORDINATOR
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Set up the NED price sensor."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([NedCurrentPriceSensor(coordinator)])
+    coordinator = hass.data[DOMAIN][entry.entry_id][COORDINATOR]
+
+    async_add_entities(
+        [
+            NedCurrentLoadSensor(coordinator),
+            NedTodayMinSensor(coordinator),
+            NedTodayMaxSensor(coordinator),
+        ]
+    )
 
 
-class NedCurrentPriceSensor(SensorEntity):
-    """Single sensor with current price and all hourly data as attributes."""
-
-    _attr_name = "NED Electricity Price"
-    _attr_native_unit_of_measurement = CURRENCY_EURO
-    _attr_device_class = "monetary"
-    _attr_state_class = "measurement"
+class NedBaseSensor(SensorEntity):
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_device_info = DeviceInfo(
+        identifiers={(DOMAIN, "ned_energy")},
+        name="NED Energy",
+        manufacturer="NED",
+    )
 
     def __init__(self, coordinator):
         self.coordinator = coordinator
-        self._attr_unique_id = "ned_current_price"
-
-    @property
-    def device_info(self):
-        return DeviceInfo(
-            identifiers={(DOMAIN, "ned_prices")},
-            name="NED Electricity Prices",
-            manufacturer="ned.nl",
-        )
-
-    @property
-    def native_value(self):
-        """Return the current hour price."""
-        data = self.coordinator.data
-        if not data:
-            return None
-
-        today = datetime.now().date().isoformat()
-
-        for day in data:
-            if day["date"] == today:
-                current_hour = datetime.now().hour
-                try:
-                    return day["data"][current_hour]["prijs"]
-                except (IndexError, KeyError):
-                    return None
-
-        return None
-
-    @property
-    def extra_state_attributes(self):
-        """Expose all hourly prices as attributes."""
-        data = self.coordinator.data
-        if not data:
-            return {}
-
-        attrs = {}
-
-        for day in data:
-            date = day["date"]
-
-            hourly_prices = {
-                f"{hour:02d}:00": entry.get("prijs")
-                for hour, entry in enumerate(day["data"][:24])
-            }
-
-            attrs[f"prices_{date}"] = hourly_prices
-
-        return attrs
 
     async def async_update(self):
         await self.coordinator.async_request_refresh()
+
+    @property
+    def available(self):
+        return self.coordinator.last_update_success
+
+
+class NedCurrentLoadSensor(NedBaseSensor):
+    _attr_name = "NED Current Load"
+    _attr_unique_id = "ned_current_load"
+
+    @property
+    def native_value(self):
+        data = self.coordinator.data
+        return data[0]["value"] if data else None
+
+
+class NedTodayMinSensor(NedBaseSensor):
+    _attr_name = "NED Today Min Load"
+    _attr_unique_id = "ned_today_min"
+
+    @property
+    def native_value(self):
+        values = [d["value"] for d in self.coordinator.data if d["value"] is not None]
+        return min(values) if values else None
+
+
+class NedTodayMaxSensor(NedBaseSensor):
+    _attr_name = "NED Today Max Load"
+    _attr_unique_id = "ned_today_max"
+
+    @property
+    def native_value(self):
+        values = [d["value"] for d in self.coordinator.data if d["value"] is not None]
+        return max(values) if values else None
