@@ -1,68 +1,212 @@
+"""Sensor platform for NED.nl integration."""
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import UnitOfEnergy
-from homeassistant.helpers.entity import DeviceInfo
+import logging
+from dataclasses import dataclass
+from typing import Any
 
-from .const import DOMAIN, COORDINATOR
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfPower
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .api import (
+    CLASSIFICATION_CURRENT,
+    CLASSIFICATION_FORECAST,
+    POINT_NAMES,
+    TYPE_NAMES,
+)
+from .const import DOMAIN
+from .coordinator import NedDataCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = hass.data[DOMAIN][entry.entry_id][COORDINATOR]
-
-    async_add_entities(
-        [
-            NedCurrentLoadSensor(coordinator),
-            NedTodayMinSensor(coordinator),
-            NedTodayMaxSensor(coordinator),
-        ]
-    )
+@dataclass(frozen=True, kw_only=True)
+class NedSensorDescription(SensorEntityDescription):
+    """One metric for one (point, type, activity, classification) combo."""
+    value_field: str = "volume"
+    is_forecast: bool = False
 
 
-class NedBaseSensor(SensorEntity):
-    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-    _attr_device_info = DeviceInfo(
-        identifiers={(DOMAIN, "ned_energy")},
-        name="NED Energy",
-        manufacturer="NED",
-    )
+# ── Actual / current sensors ─────────────────────────────────────────────────
+_ACTUAL_METRICS: list[NedSensorDescription] = [
+    NedSensorDescription(
+        key="capacity",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:transmission-tower",
+        value_field="capacity",
+    ),
+    NedSensorDescription(
+        key="volume",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        # TOTAL_INCREASING so HA Energy Dashboard can consume it
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:lightning-bolt",
+        value_field="volume",
+    ),
+    NedSensorDescription(
+        key="percentage",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:percent",
+        value_field="percentage",
+    ),
+]
 
-    def __init__(self, coordinator):
-        self.coordinator = coordinator
+# ── Forecast sensors ──────────────────────────────────────────────────────────
+_FORECAST_METRICS: list[NedSensorDescription] = [
+    NedSensorDescription(
+        key="forecast_capacity",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:transmission-tower-export",
+        value_field="capacity",
+        is_forecast=True,
+    ),
+    NedSensorDescription(
+        key="forecast_volume",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:lightning-bolt-outline",
+        value_field="volume",
+        is_forecast=True,
+    ),
+    NedSensorDescription(
+        key="forecast_percentage",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:chart-line",
+        value_field="percentage",
+        is_forecast=True,
+    ),
+]
 
-    async def async_update(self):
-        await self.coordinator.async_request_refresh()
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create sensors for every (point, type, activity, metric, classification)."""
+    coordinator: NedDataCoordinator = hass.data[DOMAIN][entry.entry_id]
+
+    entities: list[NedSensor] = []
+    for (point_id, type_id, activity_id) in coordinator.client.queries:
+        point_name = POINT_NAMES.get(point_id, f"Point {point_id}")
+        type_name  = TYPE_NAMES.get(type_id,   f"Type {type_id}")
+
+        for metric in _ACTUAL_METRICS:
+            entities.append(NedSensor(
+                coordinator=coordinator,
+                point_id=point_id,
+                type_id=type_id,
+                activity_id=activity_id,
+                classification=CLASSIFICATION_CURRENT,
+                point_name=point_name,
+                type_name=type_name,
+                metric=metric,
+            ))
+
+        for metric in _FORECAST_METRICS:
+            entities.append(NedSensor(
+                coordinator=coordinator,
+                point_id=point_id,
+                type_id=type_id,
+                activity_id=activity_id,
+                classification=CLASSIFICATION_FORECAST,
+                point_name=point_name,
+                type_name=type_name,
+                metric=metric,
+            ))
+
+    async_add_entities(entities)
+
+
+class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
+    """A single NED.nl sensor for one point/type/activity/classification/metric."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: NedDataCoordinator,
+        point_id: int,
+        type_id: int,
+        activity_id: int,
+        classification: int,
+        point_name: str,
+        type_name: str,
+        metric: NedSensorDescription,
+    ) -> None:
+        super().__init__(coordinator)
+        self._point_id      = point_id
+        self._type_id       = type_id
+        self._activity_id   = activity_id
+        self._classification = classification
+        self._metric        = metric
+
+        # Stable coordinator lookup key
+        self._data_key = (
+            f"pt_{point_id}_ty_{type_id}_ac_{activity_id}_cl_{classification}"
+        )
+
+        # e.g. "ned_nl_pt0_ty2_ac1_cl2_volume"
+        self._attr_unique_id = f"ned_nl_{self._data_key}_{metric.key}"
+
+        # e.g. "Netherlands Solar Volume" / "Netherlands Solar Forecast Capacity"
+        label = metric.key.replace("forecast_", "Forecast ").replace("_", " ").title()
+        self._attr_name = f"{point_name} {type_name} {label}"
+
+        self._attr_native_unit_of_measurement = metric.native_unit_of_measurement
+        self._attr_device_class  = metric.device_class
+        self._attr_state_class   = metric.state_class
+        self._attr_icon          = metric.icon
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"ned_nl_p{point_id}")},
+            name=f"NED.nl – {point_name}",
+            manufacturer="NED.nl / Nationaal Energie Dashboard",
+            model="Dutch Energy Grid",
+            configuration_url="https://ned.nl",
+        )
 
     @property
-    def available(self):
-        return self.coordinator.last_update_success
-
-
-class NedCurrentLoadSensor(NedBaseSensor):
-    _attr_name = "NED Current Load"
-    _attr_unique_id = "ned_current_load"
+    def native_value(self) -> float | None:
+        record = self._record
+        return record.get(self._metric.value_field) if record else None
 
     @property
-    def native_value(self):
-        data = self.coordinator.data
-        return data[0]["value"] if data else None
-
-
-class NedTodayMinSensor(NedBaseSensor):
-    _attr_name = "NED Today Min Load"
-    _attr_unique_id = "ned_today_min"
-
-    @property
-    def native_value(self):
-        values = [d["value"] for d in self.coordinator.data if d["value"] is not None]
-        return min(values) if values else None
-
-
-class NedTodayMaxSensor(NedBaseSensor):
-    _attr_name = "NED Today Max Load"
-    _attr_unique_id = "ned_today_max"
+    def extra_state_attributes(self) -> dict[str, Any]:
+        record = self._record
+        if not record:
+            return {}
+        return {
+            "point_name":              record.get("point_name"),
+            "type_name":               record.get("type_name"),
+            "is_forecast":             self._metric.is_forecast,
+            "validfrom":               record.get("validfrom"),
+            "validto":                 record.get("validto"),
+            "lastupdate":              record.get("lastupdate"),
+            "emission_co2_kg":         record.get("emission"),
+            "emissionfactor_kg_per_kwh": record.get("emissionfactor"),
+        }
 
     @property
-    def native_value(self):
-        values = [d["value"] for d in self.coordinator.data if d["value"] is not None]
-        return max(values) if values else None
+    def _record(self) -> dict | None:
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get(self._data_key)

@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Verbinding met NED.nl",
+        "description": "Voer uw NED.nl API-sleutel in. Registreer op https://ned.nl/nl/registreer",
+        "data": {
+          "api_key": "API-sleutel (X-AUTH-TOKEN)",
+          "granularity": "Gegevensgranulariteit",
+          "points": "Te monitoren geografische punten"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan geen verbinding maken. Controleer uw internetverbinding.",
+      "invalid_auth": "Ongeldige API-sleutel. Controleer uw NED.nl-inloggegevens.",
+      "unknown": "Er is een onverwachte fout opgetreden."
+    },
+    "abort": {
+      "already_configured": "NED.nl is al geconfigureerd."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "NED.nl Opties",
+        "description": "Pas granulariteit en regio's aan.",
+        "data": {
+          "granularity": "Gegevensgranulariteit",
+          "points": "Te monitoren geografische punten"
+        }
+      }
+    }
+  }
+}

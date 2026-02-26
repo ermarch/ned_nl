@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to NED.nl",
+        "description": "Enter your NED.nl API key. Register at https://ned.nl/nl/registreer",
+        "data": {
+          "api_key": "API Key (X-AUTH-TOKEN)",
+          "granularity": "Data granularity",
+          "points": "Geographic points to monitor"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to NED.nl API. Check your internet connection.",
+      "invalid_auth": "Invalid API key. Please check your NED.nl credentials.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "NED.nl is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "NED.nl Options",
+        "description": "Adjust granularity and which regions to monitor.",
+        "data": {
+          "granularity": "Data granularity",
+          "points": "Geographic points to monitor"
+        }
+      }
+    }
+  }
+}

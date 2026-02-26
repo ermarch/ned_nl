@@ -1,11 +1,7 @@
-DOMAIN = "ned"
+"""Constants for the NED.nl integration."""
 
-NAME = "NED Energy"
+DOMAIN = "ned_nl"
 
-CONF_API_KEY = "api_key"
-
-COORDINATOR = "coordinator"
-
-DEFAULT_SCAN_INTERVAL = 900  # 15 minutes
-
-NED_ENDPOINT = "https://api.ned.nl/v1/utilizations"
+# Options flow / config entry keys
+CONF_GRANULARITY = "granularity"
+CONF_POINTS = "points"
