@@ -108,6 +108,11 @@ TYPE_BIOMETHANE = 24
 TYPE_BIOMASS_POWER = 25
 TYPE_OTHER_POWER = 26
 TYPE_ELECTRICITY_MIX = 27
+TYPE_GAS_MIX = 28
+TYPE_GAS_DISTRIBUTION = 31
+TYPE_WKK_TOTAL = 35
+TYPE_ALL_CONSUMING_GAS = 56    # total gas consumption (all sectors combined)
+TYPE_ELECTRICITY_LOAD = 59     # total electricity consumption / load
 
 TYPE_NAMES: dict[int, str] = {
     0: "All",
@@ -133,13 +138,18 @@ TYPE_NAMES: dict[int, str] = {
     25: "Biomass Power",
     26: "Other Power",
     27: "Electricity Mix",
+    28: "Gas Mix",
+    31: "Gas Distribution",
+    35: "WKK Total",
+    56: "All Consuming Gas",
+    59: "Electricity Load",
 }
 
 # ---------------------------------------------------------------------------
 # Default queries: (point_id, type_id, activity_id)
 # ---------------------------------------------------------------------------
 DEFAULT_QUERIES: list[tuple[int, int, int]] = [
-    # ── Electricity production ───────────────────────────────────────────────
+    # ── Electricity production (10-min for solar/wind, hourly for thermal) ──
     (POINT_NETHERLANDS, TYPE_SOLAR,           ACTIVITY_PROVIDING),
     (POINT_NETHERLANDS, TYPE_WIND,            ACTIVITY_PROVIDING),
     (POINT_NETHERLANDS, TYPE_WIND_OFFSHORE,   ACTIVITY_PROVIDING),
@@ -148,10 +158,12 @@ DEFAULT_QUERIES: list[tuple[int, int, int]] = [
     (POINT_NETHERLANDS, TYPE_NUCLEAR,         ACTIVITY_PROVIDING),
     (POINT_NETHERLANDS, TYPE_BIOMASS_POWER,   ACTIVITY_PROVIDING),
     (POINT_NETHERLANDS, TYPE_OTHER_POWER,     ACTIVITY_PROVIDING),
-    (POINT_NETHERLANDS, TYPE_ELECTRICITY_MIX, ACTIVITY_PROVIDING),
-    # ── Electricity & gas consumption ───────────────────────────────────────
-    (POINT_NETHERLANDS, TYPE_ELECTRICITY_MIX, ACTIVITY_CONSUMING),
-    (POINT_NETHERLANDS, TYPE_NATURAL_GAS,     ACTIVITY_CONSUMING),
+    # ── Electricity consumption ──────────────────────────────────────────────
+    # TYPE_ELECTRICITY_LOAD (59) = total electricity load/consumption
+    (POINT_NETHERLANDS, TYPE_ELECTRICITY_LOAD,ACTIVITY_CONSUMING),
+    # ── Gas consumption ──────────────────────────────────────────────────────
+    # TYPE_ALL_CONSUMING_GAS (56) = total gas consumption across all sectors
+    (POINT_NETHERLANDS, TYPE_ALL_CONSUMING_GAS,ACTIVITY_CONSUMING),
 ]
 
 # Types that only publish data at HOURLY granularity.
@@ -166,7 +178,24 @@ HOURLY_ONLY_TYPES: frozenset[int] = frozenset({
     TYPE_ELECTRICITY_MIX,
     TYPE_COFIRING,
     TYPE_GEOTHERMAL,
-    TYPE_NATURAL_GAS,       # gas consumption is hourly
+    TYPE_NATURAL_GAS,
+    TYPE_ALL_CONSUMING_GAS,  # total gas consumption — hourly only
+    TYPE_ELECTRICITY_LOAD,   # total electricity load — hourly only
+})
+
+# Types for which no forecast data exists in the API.
+# Queries with these types + CLASSIFICATION_FORECAST will be skipped.
+NO_FORECAST_TYPES: frozenset[int] = frozenset({
+    TYPE_ALL_CONSUMING_GAS,
+    TYPE_ELECTRICITY_LOAD,
+    TYPE_FOSSIL_GAS_POWER,
+    TYPE_FOSSIL_HARD_COAL,
+    TYPE_NUCLEAR,
+    TYPE_BIOMASS_POWER,
+    TYPE_OTHER_POWER,
+    TYPE_WASTE_POWER,
+    TYPE_COFIRING,
+    TYPE_GEOTHERMAL,
 })
 
 
@@ -330,9 +359,7 @@ class NedApiClient:
         results: dict[str, list[dict]] = {}
 
         for point_id, type_id, activity_id in self.queries:
-            # Power-plant types (nuclear, coal, gas, biomass, etc.) only publish
-            # data at hourly granularity. If the client is set to 10-min, use
-            # hourly as a fallback for these types so they are never empty.
+            # Power-plant / consumption types only publish at hourly granularity.
             if type_id in HOURLY_ONLY_TYPES and self.granularity == GRANULARITY_10MIN:
                 gran_override = GRANULARITY_HOURLY
             else:
@@ -342,6 +369,13 @@ class NedApiClient:
                 (CLASSIFICATION_CURRENT,  actual_start,   actual_end),
                 (CLASSIFICATION_FORECAST, forecast_start, forecast_end),
             ]:
+                # Skip forecast fetch for types that have no forecast data.
+                if classification == CLASSIFICATION_FORECAST and type_id in NO_FORECAST_TYPES:
+                    _LOGGER.debug(
+                        "NED.nl: skipping forecast for type=%s (no forecast available)", type_id
+                    )
+                    continue
+
                 key = f"pt_{point_id}_ty_{type_id}_ac_{activity_id}_cl_{classification}"
                 try:
                     records = await self.get_utilizations_for_query(
