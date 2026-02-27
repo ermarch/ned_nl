@@ -19,11 +19,22 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import (
+    ACTIVITY_PROVIDING,
+    ACTIVITY_CONSUMING,
+    ACTIVITY_IMPORT,
+    ACTIVITY_EXPORT,
     CLASSIFICATION_CURRENT,
     CLASSIFICATION_FORECAST,
     POINT_NAMES,
     TYPE_NAMES,
 )
+
+ACTIVITY_NAMES: dict[int, str] = {
+    ACTIVITY_PROVIDING: "Production",
+    ACTIVITY_CONSUMING: "Consumption",
+    ACTIVITY_IMPORT:    "Import",
+    ACTIVITY_EXPORT:    "Export",
+}
 from .const import DOMAIN
 from .coordinator import NedDataCoordinator
 
@@ -154,11 +165,11 @@ class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
         metric: NedSensorDescription,
     ) -> None:
         super().__init__(coordinator)
-        self._point_id      = point_id
-        self._type_id       = type_id
-        self._activity_id   = activity_id
-        self._classification = classification
-        self._metric        = metric
+        self._point_id       = point_id
+        self._type_id        = type_id
+        self._activity_id    = activity_id
+        self._classification  = classification
+        self._metric         = metric
 
         # Stable coordinator lookup key
         self._data_key = (
@@ -168,9 +179,15 @@ class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
         # e.g. "ned_nl_pt0_ty2_ac1_cl2_volume"
         self._attr_unique_id = f"ned_nl_{self._data_key}_{metric.key}"
 
-        # e.g. "Netherlands Solar Volume" / "Netherlands Solar Forecast Capacity"
+        # e.g. "Netherlands Solar Volume" / "Netherlands Electricity Mix Consumption Volume"
         label = metric.key.replace("forecast_", "Forecast ").replace("_", " ").title()
-        self._attr_name = f"{point_name} {type_name} {label}"
+        activity_label = ACTIVITY_NAMES.get(activity_id, "")
+        # Only prefix activity when it's not the default (providing/production),
+        # to keep production sensor names short.
+        if activity_id != ACTIVITY_PROVIDING:
+            self._attr_name = f"{point_name} {type_name} {activity_label} {label}"
+        else:
+            self._attr_name = f"{point_name} {type_name} {label}"
 
         self._attr_native_unit_of_measurement = metric.native_unit_of_measurement
         self._attr_device_class  = metric.device_class

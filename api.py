@@ -139,6 +139,7 @@ TYPE_NAMES: dict[int, str] = {
 # Default queries: (point_id, type_id, activity_id)
 # ---------------------------------------------------------------------------
 DEFAULT_QUERIES: list[tuple[int, int, int]] = [
+    # ── Electricity production ───────────────────────────────────────────────
     (POINT_NETHERLANDS, TYPE_SOLAR,           ACTIVITY_PROVIDING),
     (POINT_NETHERLANDS, TYPE_WIND,            ACTIVITY_PROVIDING),
     (POINT_NETHERLANDS, TYPE_WIND_OFFSHORE,   ACTIVITY_PROVIDING),
@@ -148,6 +149,9 @@ DEFAULT_QUERIES: list[tuple[int, int, int]] = [
     (POINT_NETHERLANDS, TYPE_BIOMASS_POWER,   ACTIVITY_PROVIDING),
     (POINT_NETHERLANDS, TYPE_OTHER_POWER,     ACTIVITY_PROVIDING),
     (POINT_NETHERLANDS, TYPE_ELECTRICITY_MIX, ACTIVITY_PROVIDING),
+    # ── Electricity & gas consumption ───────────────────────────────────────
+    (POINT_NETHERLANDS, TYPE_ELECTRICITY_MIX, ACTIVITY_CONSUMING),
+    (POINT_NETHERLANDS, TYPE_NATURAL_GAS,     ACTIVITY_CONSUMING),
 ]
 
 # Types that only publish data at HOURLY granularity.
@@ -162,6 +166,7 @@ HOURLY_ONLY_TYPES: frozenset[int] = frozenset({
     TYPE_ELECTRICITY_MIX,
     TYPE_COFIRING,
     TYPE_GEOTHERMAL,
+    TYPE_NATURAL_GAS,       # gas consumption is hourly
 })
 
 
