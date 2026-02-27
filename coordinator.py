@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -34,6 +34,33 @@ def _to_float(value: Any) -> float | None:
 def _most_recent(records: list[dict]) -> dict | None:
     """Return the first record (API returns desc order) or None."""
     return records[0] if records else None
+
+
+def _next_future(records: list[dict]) -> dict | None:
+    """
+    For forecast data: return the record whose validfrom is closest to now
+    but still in the future (or the most imminent past slot as fallback).
+
+    The API returns records in DESC order so records[0] is the furthest future.
+    We want the slot that is soonest — i.e. the LAST item that is still >= now,
+    which we find by walking backwards through the desc-sorted list.
+    """
+    now = datetime.now(tz=timezone.utc)
+    best = None
+    for record in reversed(records):   # ascending order: earliest first
+        raw = record.get("validfrom")
+        if not raw:
+            continue
+        try:
+            # Parse ISO-8601; Python 3.11+ handles Z, earlier needs replacement
+            vf = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            continue
+        if vf >= now:
+            best = record   # keep updating — last one >= now is the nearest future
+        elif best is None:
+            best = record   # fallback: most recent past slot if nothing future found
+    return best or _most_recent(records)
 
 
 def _most_recent_nonzero(records: list[dict], field: str = "volume") -> dict | None:
@@ -135,12 +162,12 @@ class NedDataCoordinator(DataUpdateCoordinator):
                 result[key] = None
                 continue
 
-            # For actual data use the most-recent non-zero volume slot.
-            # For forecast use strictly the most recent (future values may be zero).
+            # For actual data: most-recent non-zero volume slot.
+            # For forecast: the next upcoming (future) slot.
             if classif == CLASSIFICATION_CURRENT:
                 latest = _most_recent_nonzero(records, field="volume")
             else:
-                latest = _most_recent(records)
+                latest = _next_future(records)
 
             if latest is None:
                 result[key] = None
@@ -152,6 +179,27 @@ class NedDataCoordinator(DataUpdateCoordinator):
                     enriched.get("capacity"), enriched.get("volume"),
                     enriched.get("percentage"), latest.get("validfrom"),
                 )
+                # For forecast keys, also store the full sorted series so sensors
+                # can expose it as an attribute for custom dashboard cards.
+                if classif == CLASSIFICATION_FORECAST:
+                    now = datetime.now(tz=timezone.utc)
+                    series = []
+                    for r in sorted(records, key=lambda x: x.get("validfrom", "")):
+                        raw = r.get("validfrom")
+                        if not raw:
+                            continue
+                        try:
+                            vf = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+                        except (ValueError, AttributeError):
+                            continue
+                        if vf >= now:
+                            series.append({
+                                "validfrom": raw,
+                                "capacity":  _to_float(r.get("capacity")),
+                                "volume":    _to_float(r.get("volume")),
+                                "percentage": _pct(r.get("percentage")),
+                            })
+                    enriched = {**enriched, "_forecast_series": series}
                 result[key] = enriched
 
         return result

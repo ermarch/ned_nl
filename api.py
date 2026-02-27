@@ -310,6 +310,8 @@ class NedApiClient:
         is configured for 10-min granularity.
         """
         effective_granularity = granularity_override if granularity_override is not None else self.granularity
+        # The NED.nl API only accepts YYYY-MM-DD date strings (not full ISO datetimes).
+        # Use date-only format to avoid 403 Forbidden errors.
         params = {
             "point": point_id,
             "type": type_id,
@@ -352,9 +354,12 @@ class NedApiClient:
         actual_start = now - timedelta(hours=48)
         actual_end   = now + timedelta(hours=1)
 
-        # Forecast: next 24 h
+        # Forecast window: today through 3 days ahead.
+        # The API only accepts YYYY-MM-DD date strings so we work in whole days.
+        # The coordinator's _next_future() then picks the correct future slot
+        # from the returned records regardless of how many past-today slots are included.
         forecast_start = now
-        forecast_end   = now + timedelta(hours=25)
+        forecast_end   = now + timedelta(days=3)
 
         results: dict[str, list[dict]] = {}
 

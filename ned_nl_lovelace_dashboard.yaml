@@ -310,47 +310,103 @@ views:
 
   # ═══════════════════════════════════════════════════════════════════════════
   # VIEW 4 — Forecast  (Solar & Wind only — NED.nl has no other forecasts)
+  #
+  # Uses custom:apexcharts-card to plot the future forecast curve directly
+  # from the forecast_series attribute (list of {validfrom, capacity} objects).
+  # Install via HACS → Frontend → ApexCharts Card.
+  #
+  # The forecast_capacity sensors also show the NEXT upcoming slot value,
+  # so the entities card gives a quick single-number at-a-glance view.
   # ═══════════════════════════════════════════════════════════════════════════
   - title: Forecast
     path: forecast
     icon: mdi:chart-line
     cards:
 
+      # ── Next slot at-a-glance ─────────────────────────────────────────────
       - type: entities
         title: Next period forecast
         show_header_toggle: false
         entities:
           - entity: sensor.ned_nl_netherlands_solar_forecast_capacity
-            name: ☀️ Solar
+            name: ☀️ Solar (next slot)
           - entity: sensor.ned_nl_netherlands_wind_forecast_capacity
-            name: 💨 Wind
+            name: 💨 Wind (next slot)
           - entity: sensor.ned_nl_netherlands_wind_offshore_forecast_capacity
-            name: 🌊 Wind Offshore
+            name: 🌊 Wind Offshore (next slot)
 
-      - type: custom:mini-graph-card
-        name: Solar Forecast — 24h (kW)
-        hours_to_show: 24
-        group_by: hour
-        aggregate_func: last
-        color: "#f9c74f"
-        entities:
+      # ── Solar forecast curve (future) ─────────────────────────────────────
+      # Plots the forecast_series attribute — a real future curve up to 48 h ahead.
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Solar Forecast — next 48h (kW)
+        graph_span: 48h
+        span:
+          start: now
+        series:
           - entity: sensor.ned_nl_netherlands_solar_forecast_capacity
             name: Solar Forecast
+            color: "#f9c74f"
+            data_generator: |
+              return entity.attributes.forecast_series.map(item => {
+                return [new Date(item.validfrom).getTime(), item.capacity];
+              });
 
-      - type: custom:mini-graph-card
-        name: Wind Forecast — 24h (kW)
-        hours_to_show: 24
-        group_by: hour
-        aggregate_func: last
-        show:
-          legend: true
-        entities:
+      # ── Wind forecast curve (future) ──────────────────────────────────────
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Wind Forecast — next 48h (kW)
+        graph_span: 48h
+        span:
+          start: now
+        series:
           - entity: sensor.ned_nl_netherlands_wind_forecast_capacity
-            name: Onshore
+            name: Wind Onshore
             color: "#90be6d"
+            data_generator: |
+              return entity.attributes.forecast_series.map(item => {
+                return [new Date(item.validfrom).getTime(), item.capacity];
+              });
           - entity: sensor.ned_nl_netherlands_wind_offshore_forecast_capacity
-            name: Offshore
+            name: Wind Offshore
             color: "#43aa8b"
+            data_generator: |
+              return entity.attributes.forecast_series.map(item => {
+                return [new Date(item.validfrom).getTime(), item.capacity];
+              });
+
+      # ── Combined forecast (Solar + Wind) ──────────────────────────────────
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: All Renewable Forecasts — next 48h (kW)
+        graph_span: 48h
+        span:
+          start: now
+        series:
+          - entity: sensor.ned_nl_netherlands_solar_forecast_capacity
+            name: Solar
+            color: "#f9c74f"
+            data_generator: |
+              return entity.attributes.forecast_series.map(item => {
+                return [new Date(item.validfrom).getTime(), item.capacity];
+              });
+          - entity: sensor.ned_nl_netherlands_wind_forecast_capacity
+            name: Wind Onshore
+            color: "#90be6d"
+            data_generator: |
+              return entity.attributes.forecast_series.map(item => {
+                return [new Date(item.validfrom).getTime(), item.capacity];
+              });
+          - entity: sensor.ned_nl_netherlands_wind_offshore_forecast_capacity
+            name: Wind Offshore
+            color: "#43aa8b"
+            data_generator: |
+              return entity.attributes.forecast_series.map(item => {
+                return [new Date(item.validfrom).getTime(), item.capacity];
+              });
 
   # ═══════════════════════════════════════════════════════════════════════════
   # VIEW 5 — CO₂

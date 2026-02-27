@@ -214,7 +214,7 @@ class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
         record = self._record
         if not record:
             return {}
-        return {
+        attrs: dict[str, Any] = {
             "point_name":              record.get("point_name"),
             "type_name":               record.get("type_name"),
             "is_forecast":             self._metric.is_forecast,
@@ -224,6 +224,14 @@ class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
             "emission_co2_kg":         record.get("emission"),
             "emissionfactor_kg_per_kwh": record.get("emissionfactor"),
         }
+        # Expose the full upcoming forecast series for custom dashboard cards
+        # (e.g. custom:apexcharts-card with data_generator).
+        # Only the capacity sensor carries this to avoid tripling the attribute data.
+        if self._metric.is_forecast and self._metric.key == "forecast_capacity":
+            series = record.get("_forecast_series")
+            if series:
+                attrs["forecast_series"] = series
+        return attrs
 
     @property
     def _record(self) -> dict | None:
