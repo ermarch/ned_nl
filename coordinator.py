@@ -38,15 +38,23 @@ def _most_recent(records: list[dict]) -> dict | None:
 
 def _most_recent_nonzero(records: list[dict], field: str = "volume") -> dict | None:
     """
-    Return the most recent record where `field` is non-zero, falling back to
-    the most recent record regardless. This prevents solar showing zero just
-    because the API included a future/empty slot at the top of the list.
+    Return the most recent record where `field` is non-zero.
+    If all records are zero (e.g. no solar at night), still return the most
+    recent one — returning None would make the sensor 'unknown', which is
+    wrong for thermal plants that have capacity even when not generating.
     """
     for record in records:
         val = _to_float(record.get(field))
         if val is not None and val != 0.0:
             return record
+    # All records are zero — still return the latest rather than None
     return _most_recent(records)
+
+
+def _pct(value: Any) -> float | None:
+    """Convert API percentage from normalised 0-1 fraction to 0-100 scale."""
+    f = _to_float(value)
+    return round(f * 100, 4) if f is not None else None
 
 
 def _enrich(record: dict, point_id: int, type_id: int, activity_id: int) -> dict:
@@ -55,7 +63,7 @@ def _enrich(record: dict, point_id: int, type_id: int, activity_id: int) -> dict
         **record,
         "capacity":      _to_float(record.get("capacity")),
         "volume":        _to_float(record.get("volume")),
-        "percentage":    _to_float(record.get("percentage")),
+        "percentage":    _pct(record.get("percentage")),
         "emission":      _to_float(record.get("emission")),
         "emissionfactor":_to_float(record.get("emissionfactor")),
         "point_id":      point_id,

@@ -97,10 +97,10 @@ class NedNlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     mode=SelectSelectorMode.LIST,
                 )
             ),
-            vol.Optional(CONF_POINTS, default=[str(POINT_NAMES.keys().__iter__().__next__())]): SelectSelector(
+            vol.Optional(CONF_POINTS, default=["0"]): SelectSelector(
                 SelectSelectorConfig(
                     options=[{"value": k, "label": v} for k, v in POINT_OPTIONS.items()],
-                    mode=SelectSelectorMode.LIST,
+                    mode=SelectSelectorMode.DROPDOWN,
                     multiple=True,
                 )
             ),
@@ -152,7 +152,7 @@ class NedNlOptionsFlow(config_entries.OptionsFlow):
             vol.Required(CONF_POINTS, default=current_points): SelectSelector(
                 SelectSelectorConfig(
                     options=[{"value": k, "label": v} for k, v in POINT_OPTIONS.items()],
-                    mode=SelectSelectorMode.LIST,
+                    mode=SelectSelectorMode.DROPDOWN,
                     multiple=True,
                 )
             ),
