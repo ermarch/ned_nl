@@ -79,7 +79,8 @@ _FORECAST_METRICS: list[NedSensorDescription] = [
     NedSensorDescription(
         key="forecast_volume",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
+        # No device_class: ENERGY requires total/total_increasing, but forecast
+        # volumes are point-in-time predictions, not a running total.
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:lightning-bolt-outline",
         value_field="volume",
