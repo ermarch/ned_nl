@@ -212,14 +212,15 @@ class NedDataCoordinator(DataUpdateCoordinator):
                         except (ValueError, AttributeError):
                             continue
                         if vf >= now:
-                            series.append({
-                                "validfrom":  raw,
-                                "ts":         int(vf.timestamp() * 1000),  # Unix ms for JS
-                                "capacity":   _kw_to_w(r.get("capacity")),
-                                "volume":     _kw_to_w(r.get("volume")),
-                                "percentage": _pct(r.get("percentage")),
-                            })
-                    enriched = {**enriched, "_forecast_series": series}
+                            # Store only ts + capacity — the only fields the
+                            # dashboard data_generator needs. Keeping the payload
+                            # minimal avoids the 16 KB HA attribute size limit.
+                            series.append([
+                                int(vf.timestamp() * 1000),  # Unix ms
+                                _kw_to_w(r.get("capacity")),
+                            ])
+                    # Cap at 48 entries (48 h of hourly data)
+                    enriched = {**enriched, "_forecast_series": series[:48]}
                 result[key] = enriched
 
         return result

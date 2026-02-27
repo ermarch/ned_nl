@@ -363,7 +363,7 @@ views:
             color: "#f9c74f"
             data_generator: |
               return entity.attributes.forecast_series
-                ? entity.attributes.forecast_series.map(s => [s.ts, s.capacity])
+                ? entity.attributes.forecast_series
                 : [];
 
       # ── Wind forecast — future curve ──────────────────────────────────────
@@ -390,14 +390,14 @@ views:
             color: "#90be6d"
             data_generator: |
               return entity.attributes.forecast_series
-                ? entity.attributes.forecast_series.map(s => [s.ts, s.capacity])
+                ? entity.attributes.forecast_series
                 : [];
           - entity: sensor.ned_nl_netherlands_wind_offshore_forecast_capacity
             name: Wind Offshore
             color: "#43aa8b"
             data_generator: |
               return entity.attributes.forecast_series
-                ? entity.attributes.forecast_series.map(s => [s.ts, s.capacity])
+                ? entity.attributes.forecast_series
                 : [];
 
       # ── Total grid mix forecast (ElectricityMix type 27) ──────────────────
@@ -424,7 +424,7 @@ views:
             color: "#277da1"
             data_generator: |
               return entity.attributes.forecast_series
-                ? entity.attributes.forecast_series.map(s => [s.ts, s.capacity])
+                ? entity.attributes.forecast_series
                 : [];
 
   # ═══════════════════════════════════════════════════════════════════════════

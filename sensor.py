@@ -83,12 +83,14 @@ _ACTUAL_METRICS: list[NedSensorDescription] = [
 ]
 
 # ── Forecast sensors ──────────────────────────────────────────────────────────
+# No state_class: forecasts are predictions, not measurements. Without
+# state_class HA does not attempt to compile long-term statistics for these
+# sensors, avoiding unit-mismatch warnings when the unit changes.
 _FORECAST_METRICS: list[NedSensorDescription] = [
     NedSensorDescription(
         key="forecast_capacity",
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:transmission-tower-export",
         value_field="capacity",
         is_forecast=True,
@@ -97,7 +99,7 @@ _FORECAST_METRICS: list[NedSensorDescription] = [
     NedSensorDescription(
         key="forecast_volume",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
-        state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.ENERGY,
         icon="mdi:lightning-bolt-outline",
         value_field="volume",
         is_forecast=True,
@@ -106,7 +108,6 @@ _FORECAST_METRICS: list[NedSensorDescription] = [
     NedSensorDescription(
         key="forecast_percentage",
         native_unit_of_measurement=PERCENTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:chart-line",
         value_field="percentage",
         is_forecast=True,
