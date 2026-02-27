@@ -52,9 +52,19 @@ def _most_recent_nonzero(records: list[dict], field: str = "volume") -> dict | N
 
 
 def _pct(value: Any) -> float | None:
-    """Convert API percentage from normalised 0-1 fraction to 0-100 scale."""
+    """
+    Convert API percentage from normalised 0-1 fraction to 0-100 scale.
+    The NED.nl API returns values like 0.0597 meaning 5.97%.
+    Guard: if the value is already > 1.5 assume it's already in % and skip multiply.
+    """
     f = _to_float(value)
-    return round(f * 100, 4) if f is not None else None
+    if f is None:
+        return None
+    if f > 1.5:
+        # Already a percentage value — return as-is (rounded)
+        _LOGGER.debug("NED.nl: percentage value %s appears already scaled, using as-is", f)
+        return round(f, 4)
+    return round(f * 100, 4)
 
 
 def _enrich(record: dict, point_id: int, type_id: int, activity_id: int) -> dict:

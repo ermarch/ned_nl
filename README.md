@@ -25,6 +25,10 @@ A custom Home Assistant integration for live Dutch electricity grid data from th
 1. Copy `custom_components/ned_nl` → `config/custom_components/ned_nl`
 2. Restart Home Assistant
 
+### Install the dashboard
+Settings → Dashboards → Add Dashboard → open it → ⋮ → Edit → ⋮ → Raw configuration editor → paste the YAML.
+The graphs use custom:mini-graph-card which you can install via HACS if you don't have it already.
+
 ## Setup
 
 1. **Settings → Devices & Services → Add Integration → NED.nl**

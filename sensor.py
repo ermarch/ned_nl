@@ -25,6 +25,7 @@ from .api import (
     ACTIVITY_EXPORT,
     CLASSIFICATION_CURRENT,
     CLASSIFICATION_FORECAST,
+    NO_FORECAST_TYPES,
     POINT_NAMES,
     TYPE_NAMES,
 )
@@ -133,17 +134,19 @@ async def async_setup_entry(
                 metric=metric,
             ))
 
-        for metric in _FORECAST_METRICS:
-            entities.append(NedSensor(
-                coordinator=coordinator,
-                point_id=point_id,
-                type_id=type_id,
-                activity_id=activity_id,
-                classification=CLASSIFICATION_FORECAST,
-                point_name=point_name,
-                type_name=type_name,
-                metric=metric,
-            ))
+        # Only create forecast sensors for types that actually have forecast data.
+        if type_id not in NO_FORECAST_TYPES:
+            for metric in _FORECAST_METRICS:
+                entities.append(NedSensor(
+                    coordinator=coordinator,
+                    point_id=point_id,
+                    type_id=type_id,
+                    activity_id=activity_id,
+                    classification=CLASSIFICATION_FORECAST,
+                    point_name=point_name,
+                    type_name=type_name,
+                    metric=metric,
+                ))
 
     async_add_entities(entities)
 
@@ -179,15 +182,14 @@ class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
         # e.g. "ned_nl_pt0_ty2_ac1_cl2_volume"
         self._attr_unique_id = f"ned_nl_{self._data_key}_{metric.key}"
 
-        # e.g. "Netherlands Solar Volume" / "Netherlands Electricity Mix Consumption Volume"
+        # Sensor name excludes point_name — the device card already shows the region.
+        # e.g. "Solar Capacity" / "Electricity Load Consumption Capacity"
         label = metric.key.replace("forecast_", "Forecast ").replace("_", " ").title()
         activity_label = ACTIVITY_NAMES.get(activity_id, "")
-        # Only prefix activity when it's not the default (providing/production),
-        # to keep production sensor names short.
         if activity_id != ACTIVITY_PROVIDING:
-            self._attr_name = f"{point_name} {type_name} {activity_label} {label}"
+            self._attr_name = f"{type_name} {activity_label} {label}"
         else:
-            self._attr_name = f"{point_name} {type_name} {label}"
+            self._attr_name = f"{type_name} {label}"
 
         self._attr_native_unit_of_measurement = metric.native_unit_of_measurement
         self._attr_device_class  = metric.device_class
