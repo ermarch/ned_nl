@@ -38,29 +38,38 @@ def _most_recent(records: list[dict]) -> dict | None:
 
 def _next_future(records: list[dict]) -> dict | None:
     """
-    For forecast data: return the record whose validfrom is closest to now
-    but still in the future (or the most imminent past slot as fallback).
+    For forecast data: return the nearest upcoming non-zero slot.
 
-    The API returns records in DESC order so records[0] is the furthest future.
-    We want the slot that is soonest — i.e. the LAST item that is still >= now,
-    which we find by walking backwards through the desc-sorted list.
+    Walk records in ascending time order (reversed from API's desc response).
+    First pass: find the soonest future slot with non-zero capacity.
+    Second pass fallback: accept any future slot (even zero).
+    Final fallback: most recent record regardless.
     """
     now = datetime.now(tz=timezone.utc)
-    best = None
+
+    future: list[dict] = []
     for record in reversed(records):   # ascending order: earliest first
         raw = record.get("validfrom")
         if not raw:
             continue
         try:
-            # Parse ISO-8601; Python 3.11+ handles Z, earlier needs replacement
             vf = datetime.fromisoformat(raw.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
             continue
         if vf >= now:
-            best = record   # keep updating — last one >= now is the nearest future
-        elif best is None:
-            best = record   # fallback: most recent past slot if nothing future found
-    return best or _most_recent(records)
+            future.append(record)
+
+    if not future:
+        return _most_recent(records)
+
+    # Prefer the nearest non-zero capacity slot
+    for record in future:
+        cap = _to_float(record.get("capacity"))
+        if cap is not None and cap != 0.0:
+            return record
+
+    # All future slots are zero (e.g. solar at night) — return nearest anyway
+    return future[0]
 
 
 def _most_recent_nonzero(records: list[dict], field: str = "volume") -> dict | None:
@@ -94,12 +103,22 @@ def _pct(value: Any) -> float | None:
     return round(f * 100, 4)
 
 
+def _kw_to_w(value: Any) -> float | None:
+    """Convert kW (API native) to W for HA auto-scaling display."""
+    f = _to_float(value)
+    return f * 1000.0 if f is not None else None
+
+
 def _enrich(record: dict, point_id: int, type_id: int, activity_id: int) -> dict:
-    """Add human-readable name fields to a raw API record."""
+    """Add human-readable name fields to a raw API record.
+
+    capacity / volume are multiplied ×1000 (kW→W, kWh→Wh) so that HA's
+    automatic unit scaling shows kW / MW / GW as appropriate.
+    """
     return {
         **record,
-        "capacity":      _to_float(record.get("capacity")),
-        "volume":        _to_float(record.get("volume")),
+        "capacity":      _kw_to_w(record.get("capacity")),
+        "volume":        _kw_to_w(record.get("volume")),   # kWh → Wh
         "percentage":    _pct(record.get("percentage")),
         "emission":      _to_float(record.get("emission")),
         "emissionfactor":_to_float(record.get("emissionfactor")),
@@ -194,9 +213,10 @@ class NedDataCoordinator(DataUpdateCoordinator):
                             continue
                         if vf >= now:
                             series.append({
-                                "validfrom": raw,
-                                "capacity":  _to_float(r.get("capacity")),
-                                "volume":    _to_float(r.get("volume")),
+                                "validfrom":  raw,
+                                "ts":         int(vf.timestamp() * 1000),  # Unix ms for JS
+                                "capacity":   _kw_to_w(r.get("capacity")),
+                                "volume":     _kw_to_w(r.get("volume")),
                                 "percentage": _pct(r.get("percentage")),
                             })
                     enriched = {**enriched, "_forecast_series": series}

@@ -158,12 +158,13 @@ DEFAULT_QUERIES: list[tuple[int, int, int]] = [
     (POINT_NETHERLANDS, TYPE_NUCLEAR,         ACTIVITY_PROVIDING),
     (POINT_NETHERLANDS, TYPE_BIOMASS_POWER,   ACTIVITY_PROVIDING),
     (POINT_NETHERLANDS, TYPE_OTHER_POWER,     ACTIVITY_PROVIDING),
+    # ── Electricity mix — actual data is empty but forecast works ────────────
+    # The NED website uses ElectricityMix (type 27) for its own forecast graph.
+    (POINT_NETHERLANDS, TYPE_ELECTRICITY_MIX, ACTIVITY_PROVIDING),
     # ── Electricity consumption ──────────────────────────────────────────────
-    # TYPE_ELECTRICITY_LOAD (59) = total electricity load/consumption
-    (POINT_NETHERLANDS, TYPE_ELECTRICITY_LOAD,ACTIVITY_CONSUMING),
+    (POINT_NETHERLANDS, TYPE_ELECTRICITY_LOAD, ACTIVITY_CONSUMING),
     # ── Gas consumption ──────────────────────────────────────────────────────
-    # TYPE_ALL_CONSUMING_GAS (56) = total gas consumption across all sectors
-    (POINT_NETHERLANDS, TYPE_ALL_CONSUMING_GAS,ACTIVITY_CONSUMING),
+    (POINT_NETHERLANDS, TYPE_ALL_CONSUMING_GAS, ACTIVITY_CONSUMING),
 ]
 
 # Types that only publish data at HOURLY granularity.
@@ -185,6 +186,9 @@ HOURLY_ONLY_TYPES: frozenset[int] = frozenset({
 
 # Types for which no forecast data exists in the API.
 # Queries with these types + CLASSIFICATION_FORECAST will be skipped.
+# Types for which the API returns NO forecast data.
+# ElectricityMix (27) is NOT in this set — it does have forecast data.
+# Individual solar/wind forecasts (types 1,2,17) also have forecast data.
 NO_FORECAST_TYPES: frozenset[int] = frozenset({
     TYPE_ALL_CONSUMING_GAS,
     TYPE_ELECTRICITY_LOAD,
@@ -196,6 +200,12 @@ NO_FORECAST_TYPES: frozenset[int] = frozenset({
     TYPE_WASTE_POWER,
     TYPE_COFIRING,
     TYPE_GEOTHERMAL,
+})
+
+# Types for which actual (non-forecast) data is empty — skip actual fetch.
+# ElectricityMix providing actual returns empty; only its forecast is valid.
+NO_ACTUAL_TYPES: frozenset[int] = frozenset({
+    TYPE_ELECTRICITY_MIX,
 })
 
 
@@ -376,9 +386,11 @@ class NedApiClient:
             ]:
                 # Skip forecast fetch for types that have no forecast data.
                 if classification == CLASSIFICATION_FORECAST and type_id in NO_FORECAST_TYPES:
-                    _LOGGER.debug(
-                        "NED.nl: skipping forecast for type=%s (no forecast available)", type_id
-                    )
+                    _LOGGER.debug("NED.nl: skipping forecast for type=%s", type_id)
+                    continue
+                # Skip actual fetch for types that only have forecast data.
+                if classification == CLASSIFICATION_CURRENT and type_id in NO_ACTUAL_TYPES:
+                    _LOGGER.debug("NED.nl: skipping actual for type=%s (forecast-only)", type_id)
                     continue
 
                 key = f"pt_{point_id}_ty_{type_id}_ac_{activity_id}_cl_{classification}"

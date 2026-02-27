@@ -25,6 +25,7 @@ from .api import (
     ACTIVITY_EXPORT,
     CLASSIFICATION_CURRENT,
     CLASSIFICATION_FORECAST,
+    NO_ACTUAL_TYPES,
     NO_FORECAST_TYPES,
     POINT_NAMES,
     TYPE_NAMES,
@@ -50,23 +51,26 @@ class NedSensorDescription(SensorEntityDescription):
 
 
 # ── Actual / current sensors ─────────────────────────────────────────────────
+# Units are stored as W / Wh (API returns kW / kWh, converted on read ×1000).
+# HA auto-scales W → kW → MW → GW based on magnitude, keeping display tidy.
 _ACTUAL_METRICS: list[NedSensorDescription] = [
     NedSensorDescription(
         key="capacity",
-        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:transmission-tower",
         value_field="capacity",
+        suggested_display_precision=2,
     ),
     NedSensorDescription(
         key="volume",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        # TOTAL_INCREASING so HA Energy Dashboard can consume it
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:lightning-bolt",
         value_field="volume",
+        suggested_display_precision=2,
     ),
     NedSensorDescription(
         key="percentage",
@@ -74,6 +78,7 @@ _ACTUAL_METRICS: list[NedSensorDescription] = [
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:percent",
         value_field="percentage",
+        suggested_display_precision=1,
     ),
 ]
 
@@ -81,22 +86,22 @@ _ACTUAL_METRICS: list[NedSensorDescription] = [
 _FORECAST_METRICS: list[NedSensorDescription] = [
     NedSensorDescription(
         key="forecast_capacity",
-        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:transmission-tower-export",
         value_field="capacity",
         is_forecast=True,
+        suggested_display_precision=2,
     ),
     NedSensorDescription(
         key="forecast_volume",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        # No device_class: ENERGY requires total/total_increasing, but forecast
-        # volumes are point-in-time predictions, not a running total.
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:lightning-bolt-outline",
         value_field="volume",
         is_forecast=True,
+        suggested_display_precision=2,
     ),
     NedSensorDescription(
         key="forecast_percentage",
@@ -105,6 +110,7 @@ _FORECAST_METRICS: list[NedSensorDescription] = [
         icon="mdi:chart-line",
         value_field="percentage",
         is_forecast=True,
+        suggested_display_precision=1,
     ),
 ]
 
@@ -122,17 +128,19 @@ async def async_setup_entry(
         point_name = POINT_NAMES.get(point_id, f"Point {point_id}")
         type_name  = TYPE_NAMES.get(type_id,   f"Type {type_id}")
 
-        for metric in _ACTUAL_METRICS:
-            entities.append(NedSensor(
-                coordinator=coordinator,
-                point_id=point_id,
-                type_id=type_id,
-                activity_id=activity_id,
-                classification=CLASSIFICATION_CURRENT,
-                point_name=point_name,
-                type_name=type_name,
-                metric=metric,
-            ))
+        # Skip actual sensors for types that only have forecast data.
+        if type_id not in NO_ACTUAL_TYPES:
+            for metric in _ACTUAL_METRICS:
+                entities.append(NedSensor(
+                    coordinator=coordinator,
+                    point_id=point_id,
+                    type_id=type_id,
+                    activity_id=activity_id,
+                    classification=CLASSIFICATION_CURRENT,
+                    point_name=point_name,
+                    type_name=type_name,
+                    metric=metric,
+                ))
 
         # Only create forecast sensors for types that actually have forecast data.
         if type_id not in NO_FORECAST_TYPES:

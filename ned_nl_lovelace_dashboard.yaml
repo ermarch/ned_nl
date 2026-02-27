@@ -1,14 +1,16 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# NED.nl Energy Dashboard — Lovelace YAML  (v1.0.1)
+# NED.nl Energy Dashboard — Lovelace YAML  (v1.0.4)
 #
 # HOW TO USE:
 #   Settings → Dashboards → Add Dashboard → open it
 #   → ⋮ → Edit → ⋮ → Raw configuration editor → paste this file.
 #
-# Requires: custom:mini-graph-card  (install via HACS → Frontend)
+# Required HACS frontend cards:
+#   • custom:mini-graph-card   (HACS → Frontend → Mini Graph Card)
+#   • custom:apexcharts-card   (HACS → Frontend → ApexCharts Card)
+#     — only needed for the Forecast view future-curve graphs
 #
-# Note: forecast sensors only exist for Solar, Wind, and Wind Offshore —
-# the NED.nl API does not publish forecasts for thermal/nuclear/gas/load types.
+# Units auto-scale: sensors store W/Wh, HA displays kW / MW / GW as appropriate.
 # ─────────────────────────────────────────────────────────────────────────────
 
 title: NED.nl Energy
@@ -71,7 +73,7 @@ views:
             needle: true
 
       - type: custom:mini-graph-card
-        name: All Production Sources — 24h (kW)
+        name: All Production Sources — 24h
         hours_to_show: 24
         group_by: hour
         aggregate_func: last
@@ -105,7 +107,7 @@ views:
             color: "#adb5bd"
 
       - type: custom:mini-graph-card
-        name: Renewables vs Load — 24h (kW)
+        name: Renewables vs Load — 24h
         hours_to_show: 24
         group_by: hour
         aggregate_func: last
@@ -160,7 +162,7 @@ views:
     cards:
 
       - type: custom:mini-graph-card
-        name: Solar — 24h (kW)
+        name: Solar — 24h
         hours_to_show: 24
         group_by: 10min
         aggregate_func: last
@@ -182,7 +184,7 @@ views:
             name: Solar %
 
       - type: custom:mini-graph-card
-        name: Wind — 24h (kW)
+        name: Wind — 24h
         hours_to_show: 24
         group_by: 10min
         aggregate_func: last
@@ -197,7 +199,7 @@ views:
             color: "#43aa8b"
 
       - type: custom:mini-graph-card
-        name: Thermal & Nuclear — 24h (kW)
+        name: Thermal & Nuclear — 24h
         hours_to_show: 24
         group_by: hour
         aggregate_func: last
@@ -259,7 +261,7 @@ views:
             icon: mdi:gas-burner
 
       - type: custom:mini-graph-card
-        name: Electricity Load — 24h (kW)
+        name: Electricity Load — 24h
         hours_to_show: 24
         group_by: hour
         aggregate_func: last
@@ -269,7 +271,7 @@ views:
             name: Electricity Load
 
       - type: custom:mini-graph-card
-        name: Gas Consumption — 24h (kW)
+        name: Gas Consumption — 24h
         hours_to_show: 24
         group_by: hour
         aggregate_func: last
@@ -279,7 +281,7 @@ views:
             name: Gas Load
 
       - type: custom:mini-graph-card
-        name: Renewables vs Load — 48h (kW)
+        name: Renewables vs Load — 48h
         hours_to_show: 48
         group_by: hour
         aggregate_func: last
@@ -309,104 +311,121 @@ views:
             name: Gas
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # VIEW 4 — Forecast  (Solar & Wind only — NED.nl has no other forecasts)
+  # VIEW 4 — Forecast
   #
-  # Uses custom:apexcharts-card to plot the future forecast curve directly
-  # from the forecast_series attribute (list of {validfrom, capacity} objects).
-  # Install via HACS → Frontend → ApexCharts Card.
-  #
-  # The forecast_capacity sensors also show the NEXT upcoming slot value,
-  # so the entities card gives a quick single-number at-a-glance view.
+  # Uses custom:apexcharts-card with data_generator to plot the future curve
+  # from the forecast_series attribute on each forecast_capacity sensor.
+  # Each entry has: { ts: <unix ms>, capacity: <W>, validfrom: <ISO string> }
+  # item.ts is used directly (no JS date parsing needed).
   # ═══════════════════════════════════════════════════════════════════════════
   - title: Forecast
     path: forecast
     icon: mdi:chart-line
     cards:
 
-      # ── Next slot at-a-glance ─────────────────────────────────────────────
+      # ── At-a-glance: next non-zero upcoming slot ──────────────────────────
       - type: entities
-        title: Next period forecast
+        title: Next forecast slot
         show_header_toggle: false
         entities:
           - entity: sensor.ned_nl_netherlands_solar_forecast_capacity
-            name: ☀️ Solar (next slot)
+            name: ☀️ Solar
           - entity: sensor.ned_nl_netherlands_wind_forecast_capacity
-            name: 💨 Wind (next slot)
+            name: 💨 Wind
           - entity: sensor.ned_nl_netherlands_wind_offshore_forecast_capacity
-            name: 🌊 Wind Offshore (next slot)
+            name: 🌊 Wind Offshore
+          - entity: sensor.ned_nl_netherlands_electricity_mix_forecast_capacity
+            name: ⚡ Total Grid Mix
 
-      # ── Solar forecast curve (future) ─────────────────────────────────────
-      # Plots the forecast_series attribute — a real future curve up to 48 h ahead.
+      # ── Solar forecast — future curve ─────────────────────────────────────
+      # data_generator reads forecast_series[].ts (unix ms) and .capacity (W).
+      # HA will display the y-axis in kW/MW/GW to match the sensor unit.
       - type: custom:apexcharts-card
         header:
           show: true
-          title: Solar Forecast — next 48h (kW)
-        graph_span: 48h
-        span:
-          start: now
-        series:
-          - entity: sensor.ned_nl_netherlands_solar_forecast_capacity
-            name: Solar Forecast
-            color: "#f9c74f"
-            data_generator: |
-              return entity.attributes.forecast_series.map(item => {
-                return [new Date(item.validfrom).getTime(), item.capacity];
-              });
-
-      # ── Wind forecast curve (future) ──────────────────────────────────────
-      - type: custom:apexcharts-card
-        header:
-          show: true
-          title: Wind Forecast — next 48h (kW)
-        graph_span: 48h
-        span:
-          start: now
-        series:
-          - entity: sensor.ned_nl_netherlands_wind_forecast_capacity
-            name: Wind Onshore
-            color: "#90be6d"
-            data_generator: |
-              return entity.attributes.forecast_series.map(item => {
-                return [new Date(item.validfrom).getTime(), item.capacity];
-              });
-          - entity: sensor.ned_nl_netherlands_wind_offshore_forecast_capacity
-            name: Wind Offshore
-            color: "#43aa8b"
-            data_generator: |
-              return entity.attributes.forecast_series.map(item => {
-                return [new Date(item.validfrom).getTime(), item.capacity];
-              });
-
-      # ── Combined forecast (Solar + Wind) ──────────────────────────────────
-      - type: custom:apexcharts-card
-        header:
-          show: true
-          title: All Renewable Forecasts — next 48h (kW)
-        graph_span: 48h
-        span:
-          start: now
+          title: Solar Forecast — next 48h
+        chart_type: line
+        apex_config:
+          xaxis:
+            type: datetime
+          yaxis:
+            labels:
+              formatter: |
+                EVAL:function(val) {
+                  if (val >= 1e9) return (val/1e9).toFixed(2) + ' GW';
+                  if (val >= 1e6) return (val/1e6).toFixed(2) + ' MW';
+                  if (val >= 1e3) return (val/1e3).toFixed(1) + ' kW';
+                  return val + ' W';
+                }
         series:
           - entity: sensor.ned_nl_netherlands_solar_forecast_capacity
             name: Solar
             color: "#f9c74f"
             data_generator: |
-              return entity.attributes.forecast_series.map(item => {
-                return [new Date(item.validfrom).getTime(), item.capacity];
-              });
+              return entity.attributes.forecast_series
+                ? entity.attributes.forecast_series.map(s => [s.ts, s.capacity])
+                : [];
+
+      # ── Wind forecast — future curve ──────────────────────────────────────
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Wind Forecast — next 48h
+        chart_type: line
+        apex_config:
+          xaxis:
+            type: datetime
+          yaxis:
+            labels:
+              formatter: |
+                EVAL:function(val) {
+                  if (val >= 1e9) return (val/1e9).toFixed(2) + ' GW';
+                  if (val >= 1e6) return (val/1e6).toFixed(2) + ' MW';
+                  if (val >= 1e3) return (val/1e3).toFixed(1) + ' kW';
+                  return val + ' W';
+                }
+        series:
           - entity: sensor.ned_nl_netherlands_wind_forecast_capacity
-            name: Wind Onshore
+            name: Wind
             color: "#90be6d"
             data_generator: |
-              return entity.attributes.forecast_series.map(item => {
-                return [new Date(item.validfrom).getTime(), item.capacity];
-              });
+              return entity.attributes.forecast_series
+                ? entity.attributes.forecast_series.map(s => [s.ts, s.capacity])
+                : [];
           - entity: sensor.ned_nl_netherlands_wind_offshore_forecast_capacity
             name: Wind Offshore
             color: "#43aa8b"
             data_generator: |
-              return entity.attributes.forecast_series.map(item => {
-                return [new Date(item.validfrom).getTime(), item.capacity];
-              });
+              return entity.attributes.forecast_series
+                ? entity.attributes.forecast_series.map(s => [s.ts, s.capacity])
+                : [];
+
+      # ── Total grid mix forecast (ElectricityMix type 27) ──────────────────
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Total Grid Mix Forecast — next 48h
+        chart_type: line
+        apex_config:
+          xaxis:
+            type: datetime
+          yaxis:
+            labels:
+              formatter: |
+                EVAL:function(val) {
+                  if (val >= 1e9) return (val/1e9).toFixed(2) + ' GW';
+                  if (val >= 1e6) return (val/1e6).toFixed(2) + ' MW';
+                  if (val >= 1e3) return (val/1e3).toFixed(1) + ' kW';
+                  return val + ' W';
+                }
+        series:
+          - entity: sensor.ned_nl_netherlands_electricity_mix_forecast_capacity
+            name: Grid Mix
+            color: "#277da1"
+            data_generator: |
+              return entity.attributes.forecast_series
+                ? entity.attributes.forecast_series.map(s => [s.ts, s.capacity])
+                : [];
 
   # ═══════════════════════════════════════════════════════════════════════════
   # VIEW 5 — CO₂
@@ -420,19 +439,19 @@ views:
         cards:
           - type: stat
             entity: sensor.ned_nl_netherlands_fossil_gas_capacity
-            name: Gas (kW)
+            name: Gas
             icon: mdi:fire
           - type: stat
             entity: sensor.ned_nl_netherlands_hard_coal_capacity
-            name: Coal (kW)
+            name: Coal
             icon: mdi:coal
           - type: stat
             entity: sensor.ned_nl_netherlands_nuclear_capacity
-            name: Nuclear (kW)
+            name: Nuclear
             icon: mdi:atom
 
       - type: custom:mini-graph-card
-        name: Fossil Sources — 48h (kW)
+        name: Fossil Sources — 48h
         hours_to_show: 48
         group_by: hour
         aggregate_func: last
