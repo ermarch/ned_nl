@@ -150,6 +150,20 @@ DEFAULT_QUERIES: list[tuple[int, int, int]] = [
     (POINT_NETHERLANDS, TYPE_ELECTRICITY_MIX, ACTIVITY_PROVIDING),
 ]
 
+# Types that only publish data at HOURLY granularity.
+# If the client is configured for 10-min, these will fall back to hourly.
+HOURLY_ONLY_TYPES: frozenset[int] = frozenset({
+    TYPE_FOSSIL_GAS_POWER,
+    TYPE_FOSSIL_HARD_COAL,
+    TYPE_NUCLEAR,
+    TYPE_WASTE_POWER,
+    TYPE_BIOMASS_POWER,
+    TYPE_OTHER_POWER,
+    TYPE_ELECTRICITY_MIX,
+    TYPE_COFIRING,
+    TYPE_GEOTHERMAL,
+})
+
 
 def _extract_list(data: Any) -> list[dict]:
     """Extract records from plain JSON, JSON-LD (hydra:member), or HAL+JSON."""
@@ -242,6 +256,7 @@ class NedApiClient:
         start: datetime,
         end: datetime,
         classification: int | None = None,
+        granularity_override: int | None = None,
     ) -> list[dict]:
         """
         Fetch utilization records for a single (point, type, activity) + time window.
@@ -255,11 +270,16 @@ class NedApiClient:
           activity                    – 1 = providing
           validfrom[after]            – inclusive start date YYYY-MM-DD
           validfrom[strictly_before]  – exclusive end date   YYYY-MM-DD
+
+        granularity_override forces a specific granularity regardless of the
+        client default — used so hourly-only types still work when the client
+        is configured for 10-min granularity.
         """
+        effective_granularity = granularity_override if granularity_override is not None else self.granularity
         params = {
             "point": point_id,
             "type": type_id,
-            "granularity": self.granularity,
+            "granularity": effective_granularity,
             "granularitytimezone": self.granularity_timezone,
             "classification": classification if classification is not None else self.classification,
             "activity": activity_id,
@@ -272,9 +292,9 @@ class NedApiClient:
         data = await self._get("/utilizations", params)
         records = _extract_list(data)
         _LOGGER.debug(
-            "NED.nl: point=%s type=%s activity=%s classification=%s → %d records",
+            "NED.nl: point=%s type=%s activity=%s classification=%s granularity=%s → %d records",
             point_id, type_id, activity_id,
-            classification or self.classification, len(records),
+            classification or self.classification, effective_granularity, len(records),
         )
         return records
 
@@ -305,6 +325,14 @@ class NedApiClient:
         results: dict[str, list[dict]] = {}
 
         for point_id, type_id, activity_id in self.queries:
+            # Power-plant types (nuclear, coal, gas, biomass, etc.) only publish
+            # data at hourly granularity. If the client is set to 10-min, use
+            # hourly as a fallback for these types so they are never empty.
+            if type_id in HOURLY_ONLY_TYPES and self.granularity == GRANULARITY_10MIN:
+                gran_override = GRANULARITY_HOURLY
+            else:
+                gran_override = None
+
             for classification, start, end in [
                 (CLASSIFICATION_CURRENT,  actual_start,   actual_end),
                 (CLASSIFICATION_FORECAST, forecast_start, forecast_end),
@@ -318,6 +346,7 @@ class NedApiClient:
                         start=start,
                         end=end,
                         classification=classification,
+                        granularity_override=gran_override,
                     )
                     results[key] = records
                 except Exception as err:  # pylint: disable=broad-except

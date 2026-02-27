@@ -114,7 +114,14 @@ class NedDataCoordinator(DataUpdateCoordinator):
                 _LOGGER.warning("NED.nl: cannot parse coordinator key '%s'", key)
                 continue
 
+            type_name = TYPE_NAMES.get(type_id, f"type_{type_id}")
+
             if not records:
+                _LOGGER.warning(
+                    "NED.nl: EMPTY response for %s (point=%s type=%s/%s cl=%s) "
+                    "— check if this type/point combination is available in the API",
+                    key, point_id, type_id, type_name, classif,
+                )
                 result[key] = None
                 continue
 
@@ -128,6 +135,13 @@ class NedDataCoordinator(DataUpdateCoordinator):
             if latest is None:
                 result[key] = None
             else:
-                result[key] = _enrich(latest, point_id, type_id, activity_id)
+                enriched = _enrich(latest, point_id, type_id, activity_id)
+                _LOGGER.debug(
+                    "NED.nl: %s/%s cl=%s → capacity=%s volume=%s pct=%s validfrom=%s",
+                    type_name, point_id, classif,
+                    enriched.get("capacity"), enriched.get("volume"),
+                    enriched.get("percentage"), latest.get("validfrom"),
+                )
+                result[key] = enriched
 
         return result
