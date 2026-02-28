@@ -68,7 +68,9 @@ _ACTUAL_METRICS: list[NedSensorDescription] = [
         key="volume",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         suggested_unit_of_measurement=UnitOfEnergy.MEGA_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
+        # No device_class: ENERGY requires total/total_increasing but NED.nl
+        # volumes are revised interval figures that can decrease. Drop the
+        # device_class so HA accepts MEASUREMENT state_class without complaint.
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:lightning-bolt",
         value_field="volume",
@@ -103,7 +105,6 @@ _FORECAST_METRICS: list[NedSensorDescription] = [
         key="forecast_volume",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         suggested_unit_of_measurement=UnitOfEnergy.MEGA_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
         icon="mdi:lightning-bolt-outline",
         value_field="volume",
         is_forecast=True,
