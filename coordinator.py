@@ -103,10 +103,10 @@ def _pct(value: Any) -> float | None:
     return round(f * 100, 4)
 
 
-def _kw_to_w(value: Any) -> float | None:
-    """Convert kW (API native) to W for HA auto-scaling display."""
+def _kw_to_mw(value: Any) -> float | None:
+    """Convert kW (API native) to MW for clean display (÷ 1000)."""
     f = _to_float(value)
-    return f * 1000.0 if f is not None else None
+    return round(f / 1000.0, 4) if f is not None else None
 
 
 def _enrich(record: dict, point_id: int, type_id: int, activity_id: int) -> dict:
@@ -117,8 +117,8 @@ def _enrich(record: dict, point_id: int, type_id: int, activity_id: int) -> dict
     """
     return {
         **record,
-        "capacity":      _kw_to_w(record.get("capacity")),
-        "volume":        _kw_to_w(record.get("volume")),   # kWh → Wh
+        "capacity":      _kw_to_mw(record.get("capacity")),
+        "volume":        _kw_to_mw(record.get("volume")),   # kWh → Wh
         "percentage":    _pct(record.get("percentage")),
         "emission":      _to_float(record.get("emission")),
         "emissionfactor":_to_float(record.get("emissionfactor")),
@@ -217,7 +217,7 @@ class NedDataCoordinator(DataUpdateCoordinator):
                             # minimal avoids the 16 KB HA attribute size limit.
                             series.append([
                                 int(vf.timestamp() * 1000),  # Unix ms
-                                _kw_to_w(r.get("capacity")),
+                                _kw_to_mw(r.get("capacity")),
                             ])
                     # Cap at 48 entries (48 h of hourly data)
                     enriched = {**enriched, "_forecast_series": series[:48]}

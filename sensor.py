@@ -56,25 +56,20 @@ class NedSensorDescription(SensorEntityDescription):
 _ACTUAL_METRICS: list[NedSensorDescription] = [
     NedSensorDescription(
         key="capacity",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        suggested_unit_of_measurement=UnitOfPower.MEGA_WATT,
+        native_unit_of_measurement=UnitOfPower.MEGA_WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:transmission-tower",
         value_field="capacity",
-        suggested_display_precision=0,
+        suggested_display_precision=2,
     ),
     NedSensorDescription(
         key="volume",
-        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
-        suggested_unit_of_measurement=UnitOfEnergy.MEGA_WATT_HOUR,
-        # No device_class: ENERGY requires total/total_increasing but NED.nl
-        # volumes are revised interval figures that can decrease. Drop the
-        # device_class so HA accepts MEASUREMENT state_class without complaint.
+        native_unit_of_measurement=UnitOfEnergy.MEGA_WATT_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:lightning-bolt",
         value_field="volume",
-        suggested_display_precision=0,
+        suggested_display_precision=2,
     ),
     NedSensorDescription(
         key="percentage",
@@ -93,22 +88,20 @@ _ACTUAL_METRICS: list[NedSensorDescription] = [
 _FORECAST_METRICS: list[NedSensorDescription] = [
     NedSensorDescription(
         key="forecast_capacity",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        suggested_unit_of_measurement=UnitOfPower.MEGA_WATT,
+        native_unit_of_measurement=UnitOfPower.MEGA_WATT,
         device_class=SensorDeviceClass.POWER,
         icon="mdi:transmission-tower-export",
         value_field="capacity",
         is_forecast=True,
-        suggested_display_precision=0,
+        suggested_display_precision=2,
     ),
     NedSensorDescription(
         key="forecast_volume",
-        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
-        suggested_unit_of_measurement=UnitOfEnergy.MEGA_WATT_HOUR,
+        native_unit_of_measurement=UnitOfEnergy.MEGA_WATT_HOUR,
         icon="mdi:lightning-bolt-outline",
         value_field="volume",
         is_forecast=True,
-        suggested_display_precision=0,
+        suggested_display_precision=2,
     ),
     NedSensorDescription(
         key="forecast_percentage",
