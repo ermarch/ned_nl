@@ -198,7 +198,7 @@ class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
         else:
             self._attr_name = f"{type_name} {label}"
 
-        self._attr_native_unit_of_measurement = metric.native_unit_of_measurement
+        # native_unit_of_measurement is a dynamic property — not set here
         self._attr_device_class  = metric.device_class
         self._attr_state_class   = metric.state_class
         self._attr_icon          = metric.icon
@@ -211,10 +211,71 @@ class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
             configuration_url="https://ned.nl",
         )
 
+    # ── Dynamic unit scaling ────────────────────────────────────────────────
+    # Raw values from the coordinator are in MW / MWh / %.
+    # We scale up to GW/GWh when ≥ 1000, down to kW/kWh when < 1,
+    # and all the way to W/Wh when < 0.001 — keeping 2–4 significant digits.
+
+    _POWER_UNITS  = [                           # ascending thresholds in MW
+        (1_000,    UnitOfPower.GIGA_WATT),
+        (1,        UnitOfPower.MEGA_WATT),
+        (0.001,    UnitOfPower.KILO_WATT),
+        (0,        UnitOfPower.WATT),
+    ]
+    _ENERGY_UNITS = [                           # ascending thresholds in MWh
+        (1_000,    UnitOfEnergy.GIGA_WATT_HOUR),
+        (1,        UnitOfEnergy.MEGA_WATT_HOUR),
+        (0.001,    UnitOfEnergy.KILO_WATT_HOUR),
+        (0,        UnitOfEnergy.WATT_HOUR),
+    ]
+    # Conversion factors from MW / MWh to each target unit
+    _POWER_FACTOR  = {
+        UnitOfPower.GIGA_WATT:  1e-3,
+        UnitOfPower.MEGA_WATT:  1.0,
+        UnitOfPower.KILO_WATT:  1e3,
+        UnitOfPower.WATT:       1e6,
+    }
+    _ENERGY_FACTOR = {
+        UnitOfEnergy.GIGA_WATT_HOUR:  1e-3,
+        UnitOfEnergy.MEGA_WATT_HOUR:  1.0,
+        UnitOfEnergy.KILO_WATT_HOUR:  1e3,
+        UnitOfEnergy.WATT_HOUR:       1e6,
+    }
+
+    def _scaled(self) -> tuple[float | None, str | None]:
+        """Return (scaled_value, unit) choosing the most readable SI prefix."""
+        record = self._record
+        if not record:
+            return None, self._metric.native_unit_of_measurement
+
+        raw = record.get(self._metric.value_field)
+        if raw is None:
+            return None, self._metric.native_unit_of_measurement
+
+        base_unit = self._metric.native_unit_of_measurement
+
+        if base_unit == UnitOfPower.MEGA_WATT:
+            table, factors = self._POWER_UNITS, self._POWER_FACTOR
+        elif base_unit == UnitOfEnergy.MEGA_WATT_HOUR:
+            table, factors = self._ENERGY_UNITS, self._ENERGY_FACTOR
+        else:
+            # Percentage and other units — return as-is
+            return raw, base_unit
+
+        abs_raw = abs(raw)
+        for threshold, unit in table:
+            if abs_raw >= threshold:
+                return round(raw * factors[unit], 3), unit
+
+        return raw, base_unit  # fallback
+
     @property
     def native_value(self) -> float | None:
-        record = self._record
-        return record.get(self._metric.value_field) if record else None
+        return self._scaled()[0]
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        return self._scaled()[1]
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
