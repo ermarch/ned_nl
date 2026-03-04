@@ -23,6 +23,7 @@ from .api import (
     ACTIVITY_CONSUMING,
     ACTIVITY_IMPORT,
     ACTIVITY_EXPORT,
+    ACTIVITY_NAMES,
     CLASSIFICATION_CURRENT,
     CLASSIFICATION_FORECAST,
     NO_ACTUAL_TYPES,
@@ -30,13 +31,6 @@ from .api import (
     POINT_NAMES,
     TYPE_NAMES,
 )
-
-ACTIVITY_NAMES: dict[int, str] = {
-    ACTIVITY_PROVIDING: "Production",
-    ACTIVITY_CONSUMING: "Consumption",
-    ACTIVITY_IMPORT:    "Import",
-    ACTIVITY_EXPORT:    "Export",
-}
 from .const import DOMAIN
 from .coordinator import NedDataCoordinator
 

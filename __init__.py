@@ -65,6 +65,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    # Generate the Lovelace dashboard after a short delay so all sensors
+    # have been registered in the entity registry before we look them up.
+    async def _generate_dashboard(_now=None) -> None:
+        from .dashboard import async_generate_dashboard
+        await async_generate_dashboard(hass, queries)
+
+    import homeassistant.util.dt as dt_util
+    from homeassistant.helpers.event import async_call_later
+    entry.async_on_unload(async_call_later(hass, 5, _generate_dashboard))
+
     # Re-setup when options change (granularity / points)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
