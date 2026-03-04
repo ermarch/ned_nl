@@ -112,8 +112,8 @@ def _kw_to_mw(value: Any) -> float | None:
 def _enrich(record: dict, point_id: int, type_id: int, activity_id: int) -> dict:
     """Add human-readable name fields to a raw API record.
 
-    capacity / volume are multiplied ×1000 (kW→W, kWh→Wh) so that HA's
-    automatic unit scaling shows kW / MW / GW as appropriate.
+    capacity / volume are converted kW→MW (÷1000). The sensor's _scaled()
+    method then picks the right SI prefix (GW/MW/kW/W) for display.
     """
     return {
         **record,

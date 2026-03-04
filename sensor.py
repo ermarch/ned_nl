@@ -54,15 +54,7 @@ class NedSensorDescription(SensorEntityDescription):
 # Units are stored as W / Wh (API returns kW / kWh, converted on read ×1000).
 # HA auto-scales W → kW → MW → GW based on magnitude, keeping display tidy.
 _ACTUAL_METRICS: list[NedSensorDescription] = [
-    NedSensorDescription(
-        key="capacity",
-        native_unit_of_measurement=UnitOfPower.MEGA_WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:transmission-tower",
-        value_field="capacity",
-        suggested_display_precision=2,
-    ),
+
     NedSensorDescription(
         key="volume",
         native_unit_of_measurement=UnitOfEnergy.MEGA_WATT_HOUR,
@@ -86,15 +78,7 @@ _ACTUAL_METRICS: list[NedSensorDescription] = [
 # state_class HA does not attempt to compile long-term statistics for these
 # sensors, avoiding unit-mismatch warnings when the unit changes.
 _FORECAST_METRICS: list[NedSensorDescription] = [
-    NedSensorDescription(
-        key="forecast_capacity",
-        native_unit_of_measurement=UnitOfPower.MEGA_WATT,
-        device_class=SensorDeviceClass.POWER,
-        icon="mdi:transmission-tower-export",
-        value_field="capacity",
-        is_forecast=True,
-        suggested_display_precision=2,
-    ),
+
     NedSensorDescription(
         key="forecast_volume",
         native_unit_of_measurement=UnitOfEnergy.MEGA_WATT_HOUR,
@@ -243,7 +227,12 @@ class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
     }
 
     def _scaled(self) -> tuple[float | None, str | None]:
-        """Return (scaled_value, unit) choosing the most readable SI prefix."""
+        """Return (scaled_value, unit) choosing the most readable SI prefix.
+
+        Values are stored in MW / MWh by the coordinator. We pick the most
+        human-readable SI prefix: GW for ≥1000 MW, MW for ≥1, kW for ≥0.001,
+        W below that.
+        """
         record = self._record
         if not record:
             return None, self._metric.native_unit_of_measurement
@@ -259,15 +248,23 @@ class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
         elif base_unit == UnitOfEnergy.MEGA_WATT_HOUR:
             table, factors = self._ENERGY_UNITS, self._ENERGY_FACTOR
         else:
-            # Percentage and other units — return as-is
-            return raw, base_unit
+            return raw, base_unit  # percentage — return as-is
 
-        abs_raw = abs(raw)
+        # Sanity-correct for entities that HA may have registered in an older
+        # unit: if a value that should be MW looks implausibly large (> 100 GW)
+        # it is probably still in kW — divide by 1000 to bring back to MW.
+        mw_val = raw
+        if abs(mw_val) > 100_000:          # > 100 GW is not realistic for NL
+            mw_val = mw_val / 1_000        # kW → MW correction
+        if abs(mw_val) > 100_000_000:      # still huge → was in W
+            mw_val = mw_val / 1_000        # W → kW → MW second pass
+
+        abs_mw = abs(mw_val)
         for threshold, unit in table:
-            if abs_raw >= threshold:
-                return round(raw * factors[unit], 3), unit
+            if abs_mw >= threshold:
+                return round(mw_val * factors[unit], 3), unit
 
-        return raw, base_unit  # fallback
+        return mw_val, table[-1][1]  # fallback: smallest unit
 
     @property
     def native_value(self) -> float | None:
