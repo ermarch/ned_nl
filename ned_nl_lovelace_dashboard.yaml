@@ -1,241 +1,177 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# NED.nl Energy Dashboard — Lovelace YAML  (v1.0.4)
-#
-# HOW TO USE:
-#   Settings → Dashboards → Add Dashboard → open it
-#   → ⋮ → Edit → ⋮ → Raw configuration editor → paste this file.
-#
-# Required HACS frontend cards:
-#   • custom:mini-graph-card   (HACS → Frontend → Mini Graph Card)
-#   • custom:apexcharts-card   (HACS → Frontend → ApexCharts Card)
-#     — only needed for the Forecast view future-curve graphs
-#
-# Units auto-scale: sensors store W/Wh, HA displays kW / MW / GW as appropriate.
+# NED.nl Energy Dashboard — Lovelace YAML
+# Entity IDs matched to actual HA registry (verified 2026-03-04)
+# Requires: custom:mini-graph-card, custom:apexcharts-card (HACS → Frontend)
 # ─────────────────────────────────────────────────────────────────────────────
-
 title: NED.nl Energy
 views:
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # VIEW 1 — Live Overview
+  # VIEW 1 — Overview
   # ═══════════════════════════════════════════════════════════════════════════
-  - title: Live Overview
+  - title: Overview
     path: overview
     icon: mdi:lightning-bolt-circle
     cards:
 
-      - type: horizontal-stack
-        cards:
-          - type: stat
-            entity: sensor.ned_nl_netherlands_solar_capacity
-            name: Solar
-            icon: mdi:solar-power
-          - type: stat
-            entity: sensor.ned_nl_netherlands_wind_capacity
-            name: Wind
-            icon: mdi:wind-turbine
-          - type: stat
-            entity: sensor.ned_nl_netherlands_electricity_load_consumption_capacity
-            name: Electricity Load
-            icon: mdi:home-lightning-bolt
-
-      - type: horizontal-stack
-        cards:
-          - type: gauge
-            entity: sensor.ned_nl_netherlands_solar_percentage
-            name: Solar
-            min: 0
-            max: 100
-            severity:
-              green: 50
-              yellow: 20
-              red: 0
-            needle: true
-          - type: gauge
-            entity: sensor.ned_nl_netherlands_wind_percentage
-            name: Wind
-            min: 0
-            max: 100
-            severity:
-              green: 50
-              yellow: 20
-              red: 0
-            needle: true
-          - type: gauge
-            entity: sensor.ned_nl_netherlands_wind_offshore_percentage
-            name: Wind Offshore
-            min: 0
-            max: 100
-            severity:
-              green: 50
-              yellow: 20
-              red: 0
-            needle: true
-
-      - type: custom:mini-graph-card
-        name: All Production Sources — 24h
-        hours_to_show: 24
-        group_by: hour
-        aggregate_func: last
-        show:
-          legend: true
-          labels: false
-        entities:
-          - entity: sensor.ned_nl_netherlands_solar_capacity
-            name: Solar
-            color: "#f9c74f"
-          - entity: sensor.ned_nl_netherlands_wind_capacity
-            name: Wind
-            color: "#90be6d"
-          - entity: sensor.ned_nl_netherlands_wind_offshore_capacity
-            name: Wind Offshore
-            color: "#43aa8b"
-          - entity: sensor.ned_nl_netherlands_fossil_gas_capacity
-            name: Gas
-            color: "#f8961e"
-          - entity: sensor.ned_nl_netherlands_hard_coal_capacity
-            name: Coal
-            color: "#6c757d"
-          - entity: sensor.ned_nl_netherlands_nuclear_capacity
-            name: Nuclear
-            color: "#277da1"
-          - entity: sensor.ned_nl_netherlands_biomass_power_capacity
-            name: Biomass
-            color: "#4d908e"
-          - entity: sensor.ned_nl_netherlands_other_power_capacity
-            name: Other
-            color: "#adb5bd"
-
-      - type: custom:mini-graph-card
-        name: Renewables vs Load — 24h
-        hours_to_show: 24
-        group_by: hour
-        aggregate_func: last
-        show:
-          legend: true
-        entities:
-          - entity: sensor.ned_nl_netherlands_solar_capacity
-            name: Solar
-            color: "#f9c74f"
-          - entity: sensor.ned_nl_netherlands_wind_capacity
-            name: Wind
-            color: "#90be6d"
-          - entity: sensor.ned_nl_netherlands_wind_offshore_capacity
-            name: Wind Offshore
-            color: "#43aa8b"
-          - entity: sensor.ned_nl_netherlands_electricity_load_consumption_capacity
-            name: Load
-            color: "#e63946"
-
       - type: entities
-        title: Current Values
+        title: Current Production
         show_header_toggle: false
         entities:
-          - entity: sensor.ned_nl_netherlands_solar_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_solar_volume_2
             name: ☀️ Solar
-          - entity: sensor.ned_nl_netherlands_wind_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_volume_2
             name: 💨 Wind
-          - entity: sensor.ned_nl_netherlands_wind_offshore_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_volume_2
             name: 🌊 Wind Offshore
-          - entity: sensor.ned_nl_netherlands_fossil_gas_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_fossil_gas_volume_2
             name: 🔥 Fossil Gas
-          - entity: sensor.ned_nl_netherlands_hard_coal_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_hard_coal_volume_2
             name: ⚫ Hard Coal
-          - entity: sensor.ned_nl_netherlands_nuclear_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_nuclear_volume_2
             name: ⚛️ Nuclear
-          - entity: sensor.ned_nl_netherlands_biomass_power_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_biomass_power_volume_2
             name: 🌿 Biomass
-          - entity: sensor.ned_nl_netherlands_other_power_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_other_power_volume_2
             name: ➕ Other
           - type: divider
-          - entity: sensor.ned_nl_netherlands_electricity_load_consumption_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_electricity_load_consumption_volume
             name: ⚡ Electricity Load
-          - entity: sensor.ned_nl_netherlands_all_consuming_gas_consumption_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_all_consuming_gas_consumption_volume
             name: 🏭 Gas Consumption
 
-  # ═══════════════════════════════════════════════════════════════════════════
-  # VIEW 2 — Production
-  # ═══════════════════════════════════════════════════════════════════════════
-  - title: Production
-    path: production
-    icon: mdi:solar-power-variant
-    cards:
-
       - type: custom:mini-graph-card
-        name: Solar — 24h
-        hours_to_show: 24
-        group_by: 10min
-        aggregate_func: last
-        color: "#f9c74f"
-        entities:
-          - entity: sensor.ned_nl_netherlands_solar_capacity
-            name: Solar
-
-      - type: horizontal-stack
-        cards:
-          - type: stat
-            entity: sensor.ned_nl_netherlands_solar_capacity
-            name: Solar Now
-          - type: stat
-            entity: sensor.ned_nl_netherlands_solar_volume
-            name: Solar Volume
-          - type: stat
-            entity: sensor.ned_nl_netherlands_solar_percentage
-            name: Solar %
-
-      - type: custom:mini-graph-card
-        name: Wind — 24h
-        hours_to_show: 24
-        group_by: 10min
-        aggregate_func: last
-        show:
-          legend: true
-        entities:
-          - entity: sensor.ned_nl_netherlands_wind_capacity
-            name: Onshore
-            color: "#90be6d"
-          - entity: sensor.ned_nl_netherlands_wind_offshore_capacity
-            name: Offshore
-            color: "#43aa8b"
-
-      - type: custom:mini-graph-card
-        name: Thermal & Nuclear — 24h
+        name: Renewables — 24h
         hours_to_show: 24
         group_by: hour
         aggregate_func: last
         show:
           legend: true
         entities:
-          - entity: sensor.ned_nl_netherlands_fossil_gas_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_solar_volume_2
+            name: Solar
+            color: "#f9c74f"
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_volume_2
+            name: Wind
+            color: "#90be6d"
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_volume_2
+            name: Wind Offshore
+            color: "#43aa8b"
+
+      - type: custom:mini-graph-card
+        name: All Sources — 24h
+        hours_to_show: 24
+        group_by: hour
+        aggregate_func: last
+        show:
+          legend: true
+        entities:
+          - entity: sensor.ned_nl_netherlands_netherlands_solar_volume_2
+            name: Solar
+            color: "#f9c74f"
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_volume_2
+            name: Wind
+            color: "#90be6d"
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_volume_2
+            name: Wind Offshore
+            color: "#43aa8b"
+          - entity: sensor.ned_nl_netherlands_netherlands_fossil_gas_volume_2
             name: Gas
             color: "#f8961e"
-          - entity: sensor.ned_nl_netherlands_hard_coal_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_hard_coal_volume_2
             name: Coal
             color: "#6c757d"
-          - entity: sensor.ned_nl_netherlands_nuclear_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_nuclear_volume_2
             name: Nuclear
             color: "#277da1"
-          - entity: sensor.ned_nl_netherlands_biomass_power_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_biomass_power_volume_2
             name: Biomass
             color: "#4d908e"
-          - entity: sensor.ned_nl_netherlands_other_power_capacity
-            name: Other
-            color: "#adb5bd"
 
-      - type: history-graph
-        title: Production History — 48h
-        hours_to_show: 48
-        entities:
-          - entity: sensor.ned_nl_netherlands_solar_capacity
+  # ═══════════════════════════════════════════════════════════════════════════
+  # VIEW 2 — Percentages
+  # ═══════════════════════════════════════════════════════════════════════════
+  - title: Percentages
+    path: percentages
+    icon: mdi:percent
+    cards:
+
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.ned_nl_netherlands_netherlands_solar_percentage_2
             name: Solar
-          - entity: sensor.ned_nl_netherlands_wind_capacity
+            min: 0
+            max: 100
+            severity:
+              green: 40
+              yellow: 15
+              red: 0
+            needle: true
+          - type: gauge
+            entity: sensor.ned_nl_netherlands_netherlands_wind_percentage_2
             name: Wind
-          - entity: sensor.ned_nl_netherlands_wind_offshore_capacity
+            min: 0
+            max: 100
+            severity:
+              green: 40
+              yellow: 15
+              red: 0
+            needle: true
+          - type: gauge
+            entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_percentage_2
+            name: Offshore
+            min: 0
+            max: 100
+            severity:
+              green: 40
+              yellow: 15
+              red: 0
+            needle: true
+
+      - type: entities
+        title: Utilisation %
+        show_header_toggle: false
+        entities:
+          - entity: sensor.ned_nl_netherlands_netherlands_solar_percentage_2
+            name: ☀️ Solar
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_percentage_2
+            name: 💨 Wind
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_percentage_2
+            name: 🌊 Wind Offshore
+          - entity: sensor.ned_nl_netherlands_netherlands_fossil_gas_percentage_2
+            name: 🔥 Fossil Gas
+          - entity: sensor.ned_nl_netherlands_netherlands_hard_coal_percentage_2
+            name: ⚫ Hard Coal
+          - entity: sensor.ned_nl_netherlands_netherlands_nuclear_percentage_2
+            name: ⚛️ Nuclear
+          - entity: sensor.ned_nl_netherlands_netherlands_biomass_power_percentage_2
+            name: 🌿 Biomass
+          - entity: sensor.ned_nl_netherlands_netherlands_other_power_percentage_2
+            name: ➕ Other
+          - type: divider
+          - entity: sensor.ned_nl_netherlands_netherlands_electricity_load_consumption_percentage
+            name: ⚡ Electricity Load
+          - entity: sensor.ned_nl_netherlands_netherlands_all_consuming_gas_consumption_percentage
+            name: 🏭 Gas Consumption
+
+      - type: custom:mini-graph-card
+        name: Renewable % — 24h
+        hours_to_show: 24
+        group_by: hour
+        aggregate_func: last
+        show:
+          legend: true
+        entities:
+          - entity: sensor.ned_nl_netherlands_netherlands_solar_percentage_2
+            name: Solar
+            color: "#f9c74f"
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_percentage_2
+            name: Wind
+            color: "#90be6d"
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_percentage_2
             name: Wind Offshore
-          - entity: sensor.ned_nl_netherlands_fossil_gas_capacity
-            name: Gas
-          - entity: sensor.ned_nl_netherlands_nuclear_capacity
-            name: Nuclear
+            color: "#43aa8b"
 
   # ═══════════════════════════════════════════════════════════════════════════
   # VIEW 3 — Consumption
@@ -245,20 +181,18 @@ views:
     icon: mdi:home-lightning-bolt
     cards:
 
-      - type: horizontal-stack
-        cards:
-          - type: stat
-            entity: sensor.ned_nl_netherlands_electricity_load_consumption_capacity
-            name: Electricity Load
-            icon: mdi:lightning-bolt
-          - type: stat
-            entity: sensor.ned_nl_netherlands_electricity_load_consumption_volume
-            name: Electricity Volume
-            icon: mdi:counter
-          - type: stat
-            entity: sensor.ned_nl_netherlands_all_consuming_gas_consumption_capacity
-            name: Gas Load
-            icon: mdi:gas-burner
+      - type: entities
+        title: Consumption
+        show_header_toggle: false
+        entities:
+          - entity: sensor.ned_nl_netherlands_netherlands_electricity_load_consumption_volume
+            name: ⚡ Electricity Load
+          - entity: sensor.ned_nl_netherlands_netherlands_electricity_load_consumption_percentage
+            name: ⚡ Electricity Load %
+          - entity: sensor.ned_nl_netherlands_netherlands_all_consuming_gas_consumption_volume
+            name: 🏭 Gas Consumption
+          - entity: sensor.ned_nl_netherlands_netherlands_all_consuming_gas_consumption_percentage
+            name: 🏭 Gas Consumption %
 
       - type: custom:mini-graph-card
         name: Electricity Load — 24h
@@ -267,7 +201,7 @@ views:
         aggregate_func: last
         color: "#e63946"
         entities:
-          - entity: sensor.ned_nl_netherlands_electricity_load_consumption_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_electricity_load_consumption_volume
             name: Electricity Load
 
       - type: custom:mini-graph-card
@@ -277,88 +211,51 @@ views:
         aggregate_func: last
         color: "#f8961e"
         entities:
-          - entity: sensor.ned_nl_netherlands_all_consuming_gas_consumption_capacity
-            name: Gas Load
-
-      - type: custom:mini-graph-card
-        name: Renewables vs Load — 48h
-        hours_to_show: 48
-        group_by: hour
-        aggregate_func: last
-        show:
-          legend: true
-        entities:
-          - entity: sensor.ned_nl_netherlands_solar_capacity
-            name: Solar
-            color: "#f9c74f"
-          - entity: sensor.ned_nl_netherlands_wind_capacity
-            name: Wind
-            color: "#90be6d"
-          - entity: sensor.ned_nl_netherlands_wind_offshore_capacity
-            name: Wind Offshore
-            color: "#43aa8b"
-          - entity: sensor.ned_nl_netherlands_electricity_load_consumption_capacity
-            name: Load
-            color: "#e63946"
-
-      - type: history-graph
-        title: Consumption History — 48h
-        hours_to_show: 48
-        entities:
-          - entity: sensor.ned_nl_netherlands_electricity_load_consumption_capacity
-            name: Electricity
-          - entity: sensor.ned_nl_netherlands_all_consuming_gas_consumption_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_all_consuming_gas_consumption_volume
             name: Gas
 
   # ═══════════════════════════════════════════════════════════════════════════
   # VIEW 4 — Forecast
-  #
-  # Uses custom:apexcharts-card with data_generator to plot the future curve
-  # from the forecast_series attribute on each forecast_capacity sensor.
-  # Each entry has: { ts: <unix ms>, capacity: <W>, validfrom: <ISO string> }
-  # item.ts is used directly (no JS date parsing needed).
   # ═══════════════════════════════════════════════════════════════════════════
   - title: Forecast
     path: forecast
     icon: mdi:chart-line
     cards:
 
-      # ── At-a-glance: next non-zero upcoming slot ──────────────────────────
       - type: entities
         title: Next forecast slot
         show_header_toggle: false
         entities:
-          - entity: sensor.ned_nl_netherlands_solar_forecast_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_solar_forecast_volume
             name: ☀️ Solar
-          - entity: sensor.ned_nl_netherlands_wind_forecast_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_solar_forecast_percentage
+            name: ☀️ Solar %
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_forecast_volume
             name: 💨 Wind
-          - entity: sensor.ned_nl_netherlands_wind_offshore_forecast_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_forecast_percentage
+            name: 💨 Wind %
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_forecast_volume
             name: 🌊 Wind Offshore
-          - entity: sensor.ned_nl_netherlands_electricity_mix_forecast_capacity
-            name: ⚡ Total Grid Mix
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_forecast_percentage
+            name: 🌊 Wind Offshore %
+          - entity: sensor.ned_nl_netherlands_netherlands_electricity_mix_forecast_volume
+            name: ⚡ Grid Mix
+          - entity: sensor.ned_nl_netherlands_netherlands_electricity_mix_forecast_percentage
+            name: ⚡ Grid Mix %
 
-      # ── Solar forecast — future curve ─────────────────────────────────────
-      # data_generator reads forecast_series[].ts (unix ms) and .capacity (W).
-      # HA will display the y-axis in kW/MW/GW to match the sensor unit.
       - type: custom:apexcharts-card
         header:
           show: true
           title: Solar Forecast — next 48h
         chart_type: line
+        graph_span: 48h
+        span:
+          start: now
         apex_config:
           xaxis:
             type: datetime
-          yaxis:
-            labels:
-              formatter: |
-                EVAL:function(val) {
-                  if (val >= 1e9) return (val/1e9).toFixed(2) + ' GW';
-                  if (val >= 1e6) return (val/1e6).toFixed(2) + ' MW';
-                  if (val >= 1e3) return (val/1e3).toFixed(1) + ' kW';
-                  return val + ' W';
-                }
         series:
-          - entity: sensor.ned_nl_netherlands_solar_forecast_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_solar_forecast_volume
             name: Solar
             color: "#f9c74f"
             data_generator: |
@@ -366,33 +263,26 @@ views:
                 ? entity.attributes.forecast_series
                 : [];
 
-      # ── Wind forecast — future curve ──────────────────────────────────────
       - type: custom:apexcharts-card
         header:
           show: true
           title: Wind Forecast — next 48h
         chart_type: line
+        graph_span: 48h
+        span:
+          start: now
         apex_config:
           xaxis:
             type: datetime
-          yaxis:
-            labels:
-              formatter: |
-                EVAL:function(val) {
-                  if (val >= 1e9) return (val/1e9).toFixed(2) + ' GW';
-                  if (val >= 1e6) return (val/1e6).toFixed(2) + ' MW';
-                  if (val >= 1e3) return (val/1e3).toFixed(1) + ' kW';
-                  return val + ' W';
-                }
         series:
-          - entity: sensor.ned_nl_netherlands_wind_forecast_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_forecast_volume
             name: Wind
             color: "#90be6d"
             data_generator: |
               return entity.attributes.forecast_series
                 ? entity.attributes.forecast_series
                 : [];
-          - entity: sensor.ned_nl_netherlands_wind_offshore_forecast_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_forecast_volume
             name: Wind Offshore
             color: "#43aa8b"
             data_generator: |
@@ -400,28 +290,21 @@ views:
                 ? entity.attributes.forecast_series
                 : [];
 
-      # ── Total grid mix forecast (ElectricityMix type 27) ──────────────────
       - type: custom:apexcharts-card
         header:
           show: true
           title: Total Grid Mix Forecast — next 48h
         chart_type: line
+        graph_span: 48h
+        span:
+          start: now
         apex_config:
           xaxis:
             type: datetime
-          yaxis:
-            labels:
-              formatter: |
-                EVAL:function(val) {
-                  if (val >= 1e9) return (val/1e9).toFixed(2) + ' GW';
-                  if (val >= 1e6) return (val/1e6).toFixed(2) + ' MW';
-                  if (val >= 1e3) return (val/1e3).toFixed(1) + ' kW';
-                  return val + ' W';
-                }
         series:
-          - entity: sensor.ned_nl_netherlands_electricity_mix_forecast_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_electricity_mix_forecast_volume
             name: Grid Mix
-            color: "#277da1"
+            color: "#a78bfa"
             data_generator: |
               return entity.attributes.forecast_series
                 ? entity.attributes.forecast_series
@@ -435,20 +318,28 @@ views:
     icon: mdi:molecule-co2
     cards:
 
-      - type: horizontal-stack
-        cards:
-          - type: stat
-            entity: sensor.ned_nl_netherlands_fossil_gas_capacity
-            name: Gas
-            icon: mdi:fire
-          - type: stat
-            entity: sensor.ned_nl_netherlands_hard_coal_capacity
-            name: Coal
-            icon: mdi:coal
-          - type: stat
-            entity: sensor.ned_nl_netherlands_nuclear_capacity
-            name: Nuclear
-            icon: mdi:atom
+      - type: entities
+        title: Fossil & Low-carbon Sources
+        show_header_toggle: false
+        entities:
+          - entity: sensor.ned_nl_netherlands_netherlands_fossil_gas_volume_2
+            name: 🔥 Fossil Gas
+          - entity: sensor.ned_nl_netherlands_netherlands_fossil_gas_percentage_2
+            name: 🔥 Fossil Gas %
+          - entity: sensor.ned_nl_netherlands_netherlands_hard_coal_volume_2
+            name: ⚫ Hard Coal
+          - entity: sensor.ned_nl_netherlands_netherlands_hard_coal_percentage_2
+            name: ⚫ Hard Coal %
+          - entity: sensor.ned_nl_netherlands_netherlands_nuclear_volume_2
+            name: ⚛️ Nuclear
+          - entity: sensor.ned_nl_netherlands_netherlands_biomass_power_volume_2
+            name: 🌿 Biomass
+          - entity: sensor.ned_nl_netherlands_netherlands_solar_volume_2
+            name: ☀️ Solar
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_volume_2
+            name: 💨 Wind
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_volume_2
+            name: 🌊 Wind Offshore
 
       - type: custom:mini-graph-card
         name: Fossil Sources — 48h
@@ -458,24 +349,33 @@ views:
         show:
           legend: true
         entities:
-          - entity: sensor.ned_nl_netherlands_fossil_gas_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_fossil_gas_volume_2
             name: Gas
             color: "#f8961e"
-          - entity: sensor.ned_nl_netherlands_hard_coal_capacity
+          - entity: sensor.ned_nl_netherlands_netherlands_hard_coal_volume_2
             name: Coal
             color: "#6c757d"
 
-      - type: entities
-        title: Low-carbon Sources
-        show_header_toggle: false
+      - type: custom:mini-graph-card
+        name: Low-carbon Sources — 48h
+        hours_to_show: 48
+        group_by: hour
+        aggregate_func: last
+        show:
+          legend: true
         entities:
-          - entity: sensor.ned_nl_netherlands_nuclear_capacity
-            name: ⚛️ Nuclear
-          - entity: sensor.ned_nl_netherlands_biomass_power_capacity
-            name: 🌿 Biomass
-          - entity: sensor.ned_nl_netherlands_solar_capacity
-            name: ☀️ Solar
-          - entity: sensor.ned_nl_netherlands_wind_capacity
-            name: 💨 Wind
-          - entity: sensor.ned_nl_netherlands_wind_offshore_capacity
-            name: 🌊 Wind Offshore
+          - entity: sensor.ned_nl_netherlands_netherlands_nuclear_volume_2
+            name: Nuclear
+            color: "#277da1"
+          - entity: sensor.ned_nl_netherlands_netherlands_biomass_power_volume_2
+            name: Biomass
+            color: "#4d908e"
+          - entity: sensor.ned_nl_netherlands_netherlands_solar_volume_2
+            name: Solar
+            color: "#f9c74f"
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_volume_2
+            name: Wind
+            color: "#90be6d"
+          - entity: sensor.ned_nl_netherlands_netherlands_wind_offshore_volume_2
+            name: Wind Offshore
+            color: "#43aa8b"
