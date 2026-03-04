@@ -291,8 +291,8 @@ class NedSensor(CoordinatorEntity[NedDataCoordinator], SensorEntity):
         }
         # Expose the full upcoming forecast series for custom dashboard cards
         # (e.g. custom:apexcharts-card with data_generator).
-        # Only the capacity sensor carries this to avoid tripling the attribute data.
-        if self._metric.is_forecast and self._metric.key == "forecast_capacity":
+        # Stored on forecast_volume (forecast_capacity was removed).
+        if self._metric.is_forecast and self._metric.key == "forecast_volume":
             series = record.get("_forecast_series")
             if series:
                 attrs["forecast_series"] = series
