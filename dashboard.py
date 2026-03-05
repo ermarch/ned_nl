@@ -52,7 +52,13 @@ def _entities_card(title, rows):
 def _mini_graph(title, hours, group_by, series):
     return {"type": "custom:mini-graph-card", "name": title,
             "hours_to_show": hours, "group_by": group_by,
-            "aggregate_func": "last", "show": {"legend": len(series) > 1},
+            "aggregate_func": "last",
+            "hour24": True,
+            "show": {
+                "legend": len(series) > 1,
+                "labels": True,
+                "extrema": True,
+            },
             "entities": [{"entity": e, "name": n, "color": c} for e, n, c in series]}
 
 def _gauge(entity_id, name):
