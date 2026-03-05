@@ -70,14 +70,14 @@ _DATA_GENERATOR = LiteralStr(
 )
 
 def _apexcharts(title, series):
-    # Uses custom:apexcharts-card if available; falls back gracefully.
-    # The data_generator reads forecast_series attribute for future curve.
+    # When using data_generator, omit span and apex_config xaxis —
+    # the card determines the x-axis range from the returned data.
     return {
         "type": "custom:apexcharts-card",
         "header": {"show": True, "title": title},
-        "chart_type": "line", "graph_span": "48h",
-        "span": {"start": "now"},
-        "apex_config": {"xaxis": {"type": "datetime"}},
+        "chart_type": "line",
+        "graph_span": "48h",
+        "now": {"show": True, "label": "now"},
         "series": [{"entity": e, "name": n, "color": c,
                     "data_generator": _DATA_GENERATOR}
                    for e, n, c in series],
