@@ -56,7 +56,6 @@ def _mini_graph(title, hours, group_by, series):
         "header": {"show": True, "title": title},
         "chart_type": "line",
         "graph_span": f"{hours}h",
-        "span": {"end": "now"},
         "now": {"show": True, "label": "now"},
         "series": [
             {
