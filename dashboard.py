@@ -64,9 +64,9 @@ def _hstack(cards):
     return {"type": "horizontal-stack", "cards": cards}
 
 _DATA_GENERATOR = LiteralStr(
-    "return entity.attributes.forecast_series\n"
-    "  ? entity.attributes.forecast_series\n"
-    "  : [];\n"
+    "const s = entity.attributes.forecast_series;\n"
+    "if (!s || !Array.isArray(s) || s.length === 0) return [];\n"
+    "return s;\n"
 )
 
 def _apexcharts(title, series):
@@ -141,10 +141,10 @@ async def async_generate_dashboard(hass: HomeAssistant,
     ov_cards = [_entities_card("Current Values",
                     [(actual_vol[k], lbl(k)) for k in prod_keys + cons_keys if k in actual_vol])]
     if renew_keys:
-        ov_cards.append(_mini_graph("Renewables — 24h", 24, "hour",
+        ov_cards.append(_mini_graph("Renewables - 24h", 24, "hour",
                          [(actual_vol[k], tname(k), col(k)) for k in renew_keys]))
     if prod_keys:
-        ov_cards.append(_mini_graph("All Production — 24h", 24, "hour",
+        ov_cards.append(_mini_graph("All Production - 24h", 24, "hour",
                          [(actual_vol[k], tname(k), col(k)) for k in prod_keys]))
 
     # Percentages
@@ -156,7 +156,7 @@ async def async_generate_dashboard(hass: HomeAssistant,
     if pr:
         pct_cards.append(_entities_card("Utilisation %", pr))
     if renew_keys:
-        pct_cards.append(_mini_graph("Renewable % — 24h", 24, "hour",
+        pct_cards.append(_mini_graph("Renewable % - 24h", 24, "hour",
                           [(actual_pct[k], tname(k), col(k)) for k in renew_keys if k in actual_pct]))
 
     # Consumption
@@ -169,7 +169,7 @@ async def async_generate_dashboard(hass: HomeAssistant,
         if cr: cons_cards.append(_entities_card("Consumption", cr))
         for k in cons_keys:
             if k in actual_vol:
-                cons_cards.append(_mini_graph(f"{lbl(k, False)} — 24h", 24, "hour",
+                cons_cards.append(_mini_graph(f"{lbl(k, False)} - 24h", 24, "hour",
                                    [(actual_vol[k], lbl(k, False), col(k))]))
 
     # Forecast
@@ -183,7 +183,7 @@ async def async_generate_dashboard(hass: HomeAssistant,
         for k in fc_keys:
             if k in fc_vol:
                 fc_cards.append(_apexcharts(
-                    f"{tname(k)} Forecast — next 48h",
+                    f"{tname(k)} Forecast - next 48h",
                     [(fc_vol[k], tname(k), col(k))]))
 
     # CO2
@@ -192,10 +192,10 @@ async def async_generate_dashboard(hass: HomeAssistant,
     cp2 = [(actual_pct[k], lbl(k) + " %") for k in fossil_keys if k in actual_pct]
     if cr2: co2_cards.append(_entities_card("Fossil & Low-carbon", cr2 + cp2))
     if fossil_keys:
-        co2_cards.append(_mini_graph("Fossil Sources — 48h", 48, "hour",
+        co2_cards.append(_mini_graph("Fossil Sources - 48h", 48, "hour",
                           [(actual_vol[k], tname(k), col(k)) for k in fossil_keys if k in actual_vol]))
     if lowcarb_keys:
-        co2_cards.append(_mini_graph("Low-carbon Sources — 48h", 48, "hour",
+        co2_cards.append(_mini_graph("Low-carbon Sources - 48h", 48, "hour",
                           [(actual_vol[k], tname(k), col(k)) for k in lowcarb_keys if k in actual_vol]))
 
     def _view(title, path, icon, cards):
