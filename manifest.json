@@ -1,7 +1,7 @@
 {
   "domain": "ned_nl",
   "name": "NED.nl Energy Data",
-  "version": "1.0.27",
+  "version": "1.0.29",
   "documentation": "https://api.ned.nl/v1/docs.json?spec_version=3",
   "issue_tracker": "https://github.com/your-repo/ned_nl/issues",
   "requirements": [],

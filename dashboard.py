@@ -50,16 +50,25 @@ def _entities_card(title, rows):
             "entities": [{"entity": e, "name": n} for e, n in rows]}
 
 def _mini_graph(title, hours, group_by, series):
-    return {"type": "custom:mini-graph-card", "name": title,
-            "hours_to_show": hours, "group_by": group_by,
-            "aggregate_func": "last",
-            "hour24": True,
-            "show": {
-                "legend": len(series) > 1,
-                "labels": True,
-                "extrema": True,
-            },
-            "entities": [{"entity": e, "name": n, "color": c} for e, n, c in series]}
+    """History chart using apexcharts-card — shows recorded HA state history."""
+    return {
+        "type": "custom:apexcharts-card",
+        "header": {"show": True, "title": title},
+        "chart_type": "line",
+        "graph_span": f"{hours}h",
+        "span": {"end": "now"},
+        "now": {"show": True, "label": "now"},
+        "series": [
+            {
+                "entity": e,
+                "name": n,
+                "color": c,
+                "stroke_width": 2,
+                "group_by": {"func": "last", "duration": "1h" if group_by == "hour" else "10m"},
+            }
+            for e, n, c in series
+        ],
+    }
 
 def _gauge(entity_id, name):
     return {"type": "gauge", "entity": entity_id, "name": name,
