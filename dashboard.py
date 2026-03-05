@@ -385,25 +385,9 @@ async def async_generate_dashboard(
         _LOGGER.error("NED.nl: could not write dashboard: %s", err)
         return
 
-    # ── Register dashboard with Lovelace if not already present ──────────────
-    lovelace = hass.data.get("lovelace")
-    if lovelace is None:
-        _LOGGER.debug("NED.nl: Lovelace not available — dashboard file written but not registered")
-        return
-
-    dashboards = lovelace.get("dashboards", {})
-    if "ned-nl" not in dashboards:
-        try:
-            await hass.services.async_call(
-                "lovelace",
-                "reload_resources",
-                {},
-                blocking=False,
-            )
-        except Exception:  # pylint: disable=broad-except
-            pass
-        _LOGGER.info(
-            "NED.nl: add the dashboard manually if it doesn't appear: "
-            "Settings → Dashboards → Add Dashboard → YAML mode → "
-            "filename: ned_nl_dashboard.yaml"
-        )
+    _LOGGER.info(
+        "NED.nl: dashboard written to %s — ensure configuration.yaml contains: "
+        "lovelace: dashboards: ned-nl-energy: {mode: yaml, "
+        "filename: ned_nl_dashboard.yaml, title: NED.nl Energy}",
+        dashboard_path,
+    )
