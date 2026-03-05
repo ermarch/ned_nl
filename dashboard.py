@@ -77,6 +77,7 @@ def _apexcharts(title, series):
         "header": {"show": True, "title": title},
         "chart_type": "line",
         "graph_span": "48h",
+        "span": {"start": "now"},
         "now": {"show": True, "label": "now"},
         "series": [{"entity": e, "name": n, "color": c,
                     "data_generator": _DATA_GENERATOR}
