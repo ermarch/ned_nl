@@ -94,6 +94,7 @@ def _apexcharts(title, series):
         "span": {"start": "hour"},
         "now": {"show": True, "label": "now"},
         "series": [{"entity": e, "name": n, "color": c,
+                    "stroke_width": 2,
                     "data_generator": _DATA_GENERATOR}
                    for e, n, c in series],
     }
