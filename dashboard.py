@@ -70,6 +70,8 @@ _DATA_GENERATOR = LiteralStr(
 )
 
 def _apexcharts(title, series):
+    # Uses custom:apexcharts-card if available; falls back gracefully.
+    # The data_generator reads forecast_series attribute for future curve.
     return {
         "type": "custom:apexcharts-card",
         "header": {"show": True, "title": title},
@@ -79,6 +81,16 @@ def _apexcharts(title, series):
         "series": [{"entity": e, "name": n, "color": c,
                     "data_generator": _DATA_GENERATOR}
                    for e, n, c in series],
+    }
+
+
+def _history_graph(title, entities):
+    """Built-in history-graph card — no HACS required."""
+    return {
+        "type": "history-graph",
+        "title": title,
+        "hours_to_show": 24,
+        "entities": [{"entity": e, "name": n} for e, n in entities],
     }
 
 async def async_generate_dashboard(hass: HomeAssistant,
@@ -170,8 +182,9 @@ async def async_generate_dashboard(hass: HomeAssistant,
         fc_cards.append(_entities_card("Next forecast slot", fr))
         for k in fc_keys:
             if k in fc_vol:
-                fc_cards.append(_apexcharts(f"{tname(k)} Forecast — next 48h",
-                                 [(fc_vol[k], tname(k), col(k))]))
+                fc_cards.append(_apexcharts(
+                    f"{tname(k)} Forecast — next 48h",
+                    [(fc_vol[k], tname(k), col(k))]))
 
     # CO2
     co2_cards = []
